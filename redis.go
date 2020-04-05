@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"reflect"
 	"strconv"
 	"strings"
@@ -19,7 +20,6 @@ func execCmd(conn redis.Conn, cmd string) string {
 			tmp = append(tmp, t)
 		}
 	}
-	fmt.Println(tmp, "length:", len(tmp))
 	if len(tmp) == 0 {
 		return ""
 	}
@@ -27,6 +27,7 @@ func execCmd(conn redis.Conn, cmd string) string {
 	for _, v := range tmp[1:] {
 		args = append(args, v)
 	}
+	logrus.Debugln("exec cmd:", tmp[0], "args:", args)
 	resp, err := conn.Do(tmp[0], args...)
 	if err != nil {
 		return err.Error()
@@ -53,7 +54,6 @@ func stringfyResponse(resp interface{}) string {
 		}
 		return buf.String()
 	default:
-		fmt.Println("resp：", resp)
 		if resp == nil {
 			return "<nil>"
 		} else {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gomodule/redigo/redis"
+	"fmt"
 	"github.com/lxn/walk"
 )
 
@@ -13,40 +13,30 @@ type TabWidgetEx struct {
 	pages []*TabPageEx
 }
 
-func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
-	if tw.Pages().At(0).Title() == "tab1" {
-		tw.Pages().RemoveAt(0)
-	}
-	tabpage, err := walk.NewTabPage()
+func (tw *TabWidgetEx) startNewSession(sess session) {
+	tabPage, err := tw.NewTabPageEx()
 	if err != nil {
-		return nil, err
+		walk.MsgBox(nil, "ERROR", "新建标签页失败："+err.Error(), walk.MsgBoxIconError)
+		return
 	}
-	layout := walk.NewHBoxLayout()
-	layout.SetMargins(walk.Margins{})
-	layout.SetSpacing(0)
-	tabpage.SetLayout(layout)
+	tw.SetCurrentIndex(tw.Pages().Len() - 1)
+	tabPage.SetTitle(fmt.Sprintf("%s:%d", sess.Host, sess.Port))
 
-	tabpageEx := &TabPageEx{
-		TabPage: tabpage,
-	}
-
-	textedit, err := NewTextEdit(tw.root, tabpageEx)
+	tabPage.content.SetText("")
+	tabPage.content.AppendText(fmt.Sprintf("connecting to %s:%d ......\r\n", sess.Host, sess.Port))
+	conn, err := connectToRedis(sess.Host, sess.Port, sess.Password)
 	if err != nil {
-		return nil, err
+		tabPage.content.AppendText(err.Error())
+		return
 	}
+	tabPage.conn = conn
 
-	tabpageEx.TextEditEx = textedit
-
-	tw.Pages().Add(tabpage)
-
-	tw.pages = append(tw.pages, tabpageEx)
-	return tabpageEx, nil
+	if r := execCmd(conn, "PING"); r != "PONG" {
+		tabPage.content.AppendText(r + "\r\n")
+		return
+	}
+	tabPage.content.AppendText("连接成功！\r\n\r\n")
+	tabPage.content.AppendText("> ")
+	tabPage.content.SetReadOnly(false)
 }
 
-type TabPageEx struct {
-	*walk.TabPage
-
-	*TextEditEx
-
-	conn redis.Conn
-}
