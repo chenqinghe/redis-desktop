@@ -14,4 +14,4 @@ a redis-cli with gui.
 the project is powered by [walk](https://github.com/lxn/walk) and [redigo](https://github.com/gomodule/redigo)
 
 # license
-the porject is under MIT license which can be found in LICENSE file.
+the porject is under [MIT license](LICENSE) which can be found in LICENSE file.
