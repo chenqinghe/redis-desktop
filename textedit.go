@@ -1,9 +1,13 @@
 package main
 
 import (
-	"github.com/lxn/walk"
-	"github.com/lxn/win"
+	"fmt"
 	"strings"
+
+	"github.com/lxn/walk"
+	"github.com/lxn/walk/declarative"
+	"github.com/lxn/win"
+	"github.com/sirupsen/logrus"
 )
 
 type TextEditEx struct {
@@ -22,29 +26,39 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 		TextEdit: new(walk.TextEdit),
 	}
 
-	var style uint32
-	style |= win.WS_VSCROLL
-	textedit, err := walk.NewTextEditWithStyle(p.TabPage, style)
-	if err != nil {
-		return nil, err
-	}
-	textEditEx.TextEdit = textedit
-	textedit.SetVisible(true)
-	textedit.SetReadOnly(true)
-	textedit.KeyPress().Attach(textEditEx.OnKeyPress)
-	textedit.KeyUp().Attach(textEditEx.OnKeyUp)
+	builder := declarative.NewBuilder(p)
+	if err := (declarative.TextEdit{
+		AssignTo: &textEditEx.TextEdit,
+		ContextMenuItems: []declarative.MenuItem{
+			declarative.Action{
+				Text:        "执行选中命令",
+				OnTriggered: textEditEx.RunSelectCmd,
+			},
+			declarative.Action{
+				Text: "复制",
+				OnTriggered: func() {
 
-	bg, err := walk.NewSolidColorBrush(walk.RGB(0, 0, 0))
-	if err != nil {
+				},
+			},
+			declarative.Separator{},
+			declarative.Action{
+				Text: "清屏",
+				OnTriggered: func() {
+					textEditEx.TextEdit.SetText("> ")
+					textEditEx.TextEdit.SetTextSelection(2, 2)
+					textEditEx.offset = 0
+				},
+			},
+		},
+		OnKeyPress: textEditEx.OnKeyPress,
+		OnKeyUp:    textEditEx.OnKeyUp,
+		ReadOnly:   true,
+		TextColor:  walk.RGB(255, 255, 255),
+		VScroll:    true,
+	}).Create(builder); err != nil {
+		logrus.Errorln("create textedit error:", err)
 		return nil, err
 	}
-	textedit.SetBackground(bg)
-	//font, err := walk.NewFont("微软雅黑", 12, 0)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//textedit.SetFont(font)
-	textedit.SetTextColor(walk.RGB(255,255,255))
 
 	walk.InitWrapperWindow(textEditEx)
 
@@ -55,19 +69,20 @@ func (te *TextEditEx) OnKeyPress(key walk.Key) {
 	te.SetTextSelection(te.TextLength(), te.TextLength())
 	if key == walk.KeyReturn {
 		content := te.Text()
-		content = strings.TrimSpace(content)
-		for i := len(content) - 1; i > 0; i-- {
-			if content[i] == '>' {
-				resp := execCmd(te.parent.conn, content[i+1:])
-				te.AppendText("\r\n")
-				te.AppendText(resp)
-				te.AppendText("\r\n\r\n> ")
-				te.SetTextSelection(te.TextLength(), te.TextLength())
-				break
-			}
-		}
+		cmd := content[len(content)-te.offset:]
+		te.runCmd(cmd)
 		return
 	}
+}
+
+func (te *TextEditEx) runCmd(cmd string) {
+	cmd = strings.TrimSpace(cmd)
+	resp := execCmd(te.parent.conn, cmd)
+	te.AppendText("\r\n")
+	te.AppendText(resp)
+	te.AppendText("\r\n\r\n> ")
+	te.SetTextSelection(te.TextLength(), te.TextLength())
+	te.offset = 0
 }
 
 func (te *TextEditEx) OnKeyUp(key walk.Key) {
@@ -78,24 +93,54 @@ func (te *TextEditEx) OnKeyUp(key walk.Key) {
 	}
 }
 
+func (te *TextEditEx) RunSelectCmd() {
+	start, end := te.TextSelection()
+	logrus.Debugln("RunSelectCmd: start:", start, "end:", end)
+	if end-start <= 0 {
+		walk.MsgBox(nil, "INFO", "选中的命令为空！", walk.MsgBoxIconInformation)
+		fmt.Println("nothing to run")
+		return
+	}
+	cmd := string([]rune(te.Text())[start:end])
+	logrus.Debugln("selected cmd:", cmd)
+
+	te.clearCmdBuffer()
+	te.AppendText(cmd)
+	te.moveCursorToEnd()
+	te.offset = len(cmd)
+	te.runCmd(cmd)
+}
+
+func (te *TextEditEx) moveCursorToEnd() {
+	te.SetTextSelection(te.TextLength(), te.TextLength())
+}
+
+func (te *TextEditEx) clearCmdBuffer() {
+	text := te.Text()
+	start, end := len(text)-te.offset, len(text)
+	bufferedCmd := text[start:end]
+	runeLen := len([]rune(bufferedCmd))
+	start, end = len([]rune(text))-runeLen, len([]rune(text))
+	logrus.Debugln("clearCmdBuffer: start:", start, "end:", end, "to be cleared:", text[start:end])
+	te.SetTextSelection(start, end)
+	te.ReplaceSelectedText("", false)
+
+	te.offset = 0
+}
+
 func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) uintptr {
-	//if msg == win.WM_CHAR {
-	//	//r := te.TextEdit.WndProc(hwnd, msg, wParam, lParam)
-	//	fmt.Println("WM_CHAR:", wParam, lParam)
-	//	return 1
-	//}
-	//if msg == win.WM_KEYDOWN {
-	//	logrus.Debugln("TextEditEx WndProc:", hwnd, msg, wParam, lParam)
-	//	_, file, line, ok := runtime.Caller(1)
-	//	fmt.Printf("%s:%d  %t\n", file, line, ok)
-	//	//ne:= -1
-	//	r := []uintptr{0, 1}[rand.Intn(1)]
-	//	fmt.Println("ret:", r)
-	//	return r
-	//}
-	//if msg == win.WM_KEYUP {
-	//	return 0
-	//}
-	ret := te.TextEdit.WndProc(hwnd, msg, wParam, lParam)
-	return ret
+	if msg == win.WM_CHAR {
+		logrus.Debugln("WndProc: WM_CHAR:", wParam, lParam)
+		if walk.Key(wParam) == walk.KeyBack {
+			fmt.Println("backspace pressed!")
+			if te.offset <= 0 {
+				return 0
+			}
+			te.offset--
+			fmt.Println("offset:", te.offset)
+		} else {
+			te.offset++
+		}
+	}
+	return te.TextEdit.WndProc(hwnd, msg, wParam, lParam)
 }

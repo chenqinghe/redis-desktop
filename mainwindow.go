@@ -195,8 +195,7 @@ func createMainWindow() *MainWindowEX {
 								},
 							},
 							TabWidget{
-								AssignTo:           &mw.TW_screenGroup.TabWidget,
-								ContentMarginsZero: true,
+								AssignTo: &mw.TW_screenGroup.TabWidget,
 								Pages: []TabPage{
 									TabPage{
 										Title: "tab1",
@@ -206,6 +205,7 @@ func createMainWindow() *MainWindowEX {
 										},
 									},
 								},
+								ContentMarginsZero: true,
 							},
 						},
 					},
@@ -239,104 +239,20 @@ func startPage(uri string) {
 }
 
 func showDonate(p walk.Form) {
-	dialog, err := walk.NewDialog(p)
-	if err != nil {
-		panic(err)
-	}
-	layout:= walk.NewVBoxLayout()
-	layout.SetMargins(walk.Margins{})
-	dialog.SetLayout(layout)
-	dialog.SetTitle("捐赠")
-
-	iv, err := walk.NewImageView(dialog)
-	if err != nil {
-		panic(err)
-	}
-
-	f, err := walk.NewImageFromFile("img/cover.jpg")
-	if err != nil {
-		panic(err)
-	}
-	iv.SetImage(f)
-	iv.SetMode(walk.ImageViewModeStretch)
-	if err := iv.SetSize(walk.Size{500, 500}); err != nil {
-		logrus.Errorln("set size error:", err)
-	}
-	if err := dialog.SetSize(walk.Size{500, 500}); err != nil {
-		logrus.Errorln("set size error:", err)
-	}
-	if err:=dialog.SetMinMaxSize(walk.Size{500,500},walk.Size{500,500});err!=nil {
-		logrus.Errorln("set size error:",err)
-	}
-
-	dialog.Show()
-
-}
-
-var menuItems = []MenuItem{
-	Menu{
-		Text: "文件",
-		Items: []MenuItem{
-			Action{
-				Text:        "导出会话...",
-				OnTriggered: nil,
-			},
-			Action{
-				Text:        "导入会话...",
-				OnTriggered: nil,
+	if _, err := (Dialog{
+		Title: "捐赠",
+		Layout: VBox{
+			MarginsZero: true,
+		},
+		Children: []Widget{
+			ImageView{
+				Image:   "img/cover.jpg",
+				Mode:    ImageViewModeStretch,
+				MinSize: Size{500, 500},
+				MaxSize: Size{500, 500},
 			},
 		},
-	},
-	Menu{
-		Text: "编辑",
-		Items: []MenuItem{
-			Action{
-				Text:        "清屏",
-				OnTriggered: nil,
-			},
-		},
-	},
-	Menu{
-		Text: "设置",
-		Items: []MenuItem{
-			Action{
-				Text:        "主题",
-				OnTriggered: nil,
-			},
-			Action{
-				Text:        "日志路径",
-				OnTriggered: nil,
-			},
-		},
-	},
-	Menu{
-		Text: "运行",
-		Items: []MenuItem{
-			Action{
-				Text:        "批量运行命令",
-				OnTriggered: nil,
-			},
-		},
-	},
-	Menu{
-		Text: "帮助",
-		Items: []MenuItem{
-			Action{
-				Text: "查看源码",
-				OnTriggered: func() {
-					startPage("https://github.com/chenqinghe/redis-desktop")
-				},
-			},
-			Action{
-				Text:        "报bug",
-				OnTriggered: startIssuePage,
-			},
-			Separator{},
-			Action{
-				Text: "捐赠",
-				OnTriggered: func() {
-				},
-			},
-		},
-	},
+	}).Run(p); err != nil {
+		logrus.Errorln("showDonate: run dialog error:", err)
+	}
 }

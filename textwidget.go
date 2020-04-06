@@ -40,3 +40,7 @@ func (tw *TabWidgetEx) startNewSession(sess session) {
 	tabPage.content.SetReadOnly(false)
 }
 
+func (tw *TabWidgetEx) AddPage(page *TabPageEx) {
+	tw.Pages().Add(page.TabPage)
+	tw.pages = append(tw.pages, page)
+}

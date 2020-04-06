@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,40 +20,41 @@ func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 	//if tw.Pages().At(0).Title() == "tab1" {
 	//	tw.Pages().RemoveAt(0)
 	//}
-	tabpage, err := walk.NewTabPage()
-	if err != nil {
-		return nil, err
-	}
-	layout := walk.NewHBoxLayout()
-	layout.SetMargins(walk.Margins{})
-	layout.SetSpacing(0)
-	tabpage.SetLayout(layout)
 
 	tabpageEx := &TabPageEx{
-		TabPage: tabpage,
+		content: nil,
+		conn:    nil,
+	}
+
+	if err := (TabPage{
+		AssignTo: &tabpageEx.TabPage,
+		Layout: HBox{
+			MarginsZero: true,
+			SpacingZero: true,
+		},
+		ContextMenuItems: []MenuItem{
+			Action{
+				Text: "关闭会话",
+				OnTriggered: func() {
+					// TODO: remove the page
+				},
+			},
+		},
+	}).Create(NewBuilder(nil)); err != nil {
+		logrus.Errorln("create tabpage error:", err)
+		return nil, err
 	}
 
 	textedit, err := NewTextEdit(tw.root, tabpageEx)
 	if err != nil {
 		return nil, err
 	}
-	tabpageEx.content = textedit
+	tabpageEx.SetContent(textedit)
 
-	tabpageEx.content.VisibleChanged().Attach(func() {
-		// FIXME: 将光标移到最后而不是选中全部
-		//logrus.Debugln("tabpage visible changed!", tabpageEx.TabPage.Visible())
-		if tabpageEx.TabPage.Visible() {
-			te := tabpageEx.content.TextEdit
-			start, end := te.TextLength(), te.TextLength()
-			logrus.Debugln("start:", start, "end:", end)
-
-			te.SetFocus()
-			te.SetTextSelection(start-1, end)
-		}
-	})
-
-	tw.Pages().Add(tabpage)
-
-	tw.pages = append(tw.pages, tabpageEx)
+	tw.AddPage(tabpageEx)
 	return tabpageEx, nil
+}
+
+func (p *TabPageEx) SetContent(textedit *TextEditEx) {
+	p.content = textedit
 }
