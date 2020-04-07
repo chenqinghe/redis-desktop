@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/chenqinghe/redis-desktop/i18n"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -32,14 +33,18 @@ func main() {
 	//	coredump(err.Error())
 	//}
 
-	mw := createMainWindow()
-	mw.sessionFile = filepath.Join(rootPath, "RedisDesktop", "data")
-	sessions, err := loadSession(mw.sessionFile)
-	if err != nil {
+	// TODO: how to config languages?
+	lang, ok := i18n.GetLang("zh_cn")
+	if !ok {
+		return
+	}
+	mw := createMainWindow(lang)
+
+	mw.SetSessionFile(filepath.Join(rootPath, "RedisDesktop", "data"))
+	if err := mw.LoadSession(); err != nil {
 		walk.MsgBox(nil, "ERROR", "加载会话文件失败："+err.Error(), walk.MsgBoxIconError)
 		return
 	}
-	mw.LB_sessions.AddSessions(sessions)
 
 	mw.Run()
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chenqinghe/redis-desktop/i18n"
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
 	"github.com/sirupsen/logrus"
@@ -18,6 +19,8 @@ type MainWindowEX struct {
 	*walk.MainWindow
 
 	logFile string
+
+	lang i18n.Lang
 
 	LE_host     *walk.LineEdit
 	LE_port     *walk.LineEdit
@@ -51,23 +54,30 @@ RETRY:
 	return nil
 }
 
-func loadSession(file string) ([]session, error) {
-	data, err := ioutil.ReadFile(file)
+func (mw *MainWindowEX) SetSessionFile(file string) {
+	mw.sessionFile = file
+}
+
+func (mw *MainWindowEX) LoadSession() error {
+	data, err := ioutil.ReadFile(mw.sessionFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil
 		}
-		return nil, err
+		return err
 	}
 	sessions := make([]session, 0)
 	if err := json.Unmarshal(data, &sessions); err != nil {
-		return nil, err
+		return err
 	}
-	return sessions, nil
+
+	mw.LB_sessions.AddSessions(sessions)
+	return nil
 }
 
-func createMainWindow() *MainWindowEX {
+func createMainWindow(lang i18n.Lang) *MainWindowEX {
 	mw := &MainWindowEX{
+		lang:           lang,
 		PB_connect:     new(PushButtonEx),
 		LB_sessions:    new(ListBoxEX),
 		TW_screenGroup: new(TabWidgetEx),
@@ -76,71 +86,71 @@ func createMainWindow() *MainWindowEX {
 	mw.LB_sessions.root = mw
 	mw.TW_screenGroup.root = mw
 	err := MainWindow{
-		Title:    "redis命令行工具",
+		Title:    mw.lang.Tr("mainwindow.title"),
 		MinSize:  Size{600, 400},
 		AssignTo: &mw.MainWindow,
 		Layout:   VBox{MarginsZero: true},
 		MenuItems: []MenuItem{
 			Menu{
-				Text: "文件",
+				Text: mw.lang.Tr("mainwindow.menu.file"),
 				Items: []MenuItem{
 					Action{
-						Text:        "导出会话...",
+						Text:        mw.lang.Tr("mainwindow.menu.file.export"),
 						OnTriggered: nil,
 					},
 					Action{
-						Text:        "导入会话...",
+						Text:        mw.lang.Tr("mainwindow.menu.file.import"),
 						OnTriggered: nil,
 					},
 				},
 			},
 			Menu{
-				Text: "编辑",
+				Text: mw.lang.Tr("mainwindow.menu.edit"),
 				Items: []MenuItem{
 					Action{
-						Text:        "清屏",
+						Text:        mw.lang.Tr("mainwindow.menu.edit.clear"),
 						OnTriggered: nil,
 					},
 				},
 			},
 			Menu{
-				Text: "设置",
+				Text: mw.lang.Tr("mainwindow.menu.setting"),
 				Items: []MenuItem{
 					Action{
-						Text:        "主题",
+						Text:        mw.lang.Tr("mainwindow.menu.setting.theme"),
 						OnTriggered: nil,
 					},
 					Action{
-						Text:        "日志路径",
-						OnTriggered: nil,
-					},
-				},
-			},
-			Menu{
-				Text: "运行",
-				Items: []MenuItem{
-					Action{
-						Text:        "批量运行命令",
+						Text:        mw.lang.Tr("mainwindow.menu.logpath"),
 						OnTriggered: nil,
 					},
 				},
 			},
 			Menu{
-				Text: "帮助",
+				Text: mw.lang.Tr("mainwindow.menu.run"),
 				Items: []MenuItem{
 					Action{
-						Text: "查看源码",
+						Text:        mw.lang.Tr("mainwindow.menu.run.batch"),
+						OnTriggered: nil,
+					},
+				},
+			},
+			Menu{
+				Text: mw.lang.Tr("mainwindow.menu.help"),
+				Items: []MenuItem{
+					Action{
+						Text: mw.lang.Tr("mainwindow.menu.help.source"),
 						OnTriggered: func() {
 							startPage("https://github.com/chenqinghe/redis-desktop")
 						},
 					},
 					Action{
-						Text:        "报bug",
+						Text:        mw.lang.Tr("mainwindow.menu.help.bug"),
 						OnTriggered: startIssuePage,
 					},
 					Separator{},
 					Action{
-						Text: "捐赠",
+						Text: mw.lang.Tr("mainwindow.menu.help.donate"),
 						OnTriggered: func() {
 							showDonate(mw)
 						},
@@ -159,14 +169,14 @@ func createMainWindow() *MainWindowEX {
 						MaxSize: Size{0, 50},
 						Layout:  HBox{},
 						Children: []Widget{
-							Label{Text: "host"},
+							Label{Text: mw.lang.Tr("mainwindow.labelhost")},
 							LineEdit{AssignTo: &mw.LE_host},
-							Label{Text: "port"},
+							Label{Text: mw.lang.Tr("mainwindow.labelport")},
 							LineEdit{AssignTo: &mw.LE_port},
-							Label{Text: "password"},
+							Label{Text: mw.lang.Tr("mainwindow.labelpassword")},
 							LineEdit{AssignTo: &mw.LE_password, PasswordMode: true},
 							PushButton{
-								Text:      "连接",
+								Text:      mw.lang.Tr("mainwindow.PBconnect"),
 								AssignTo:  &mw.PB_connect.PushButton,
 								OnClicked: mw.PB_connect.OnClick,
 							},
@@ -189,7 +199,7 @@ func createMainWindow() *MainWindowEX {
 								MultiSelection:           false,
 								ContextMenuItems: []MenuItem{
 									Action{
-										Text:        "删除会话",
+										Text:        mw.lang.Tr("mainwindow.LBsessions.menu.deletesession"),
 										OnTriggered: mw.LB_sessions.RemoveSelectedSession,
 									},
 								},
