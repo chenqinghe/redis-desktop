@@ -13,7 +13,7 @@ type TabWidgetEx struct {
 	pages []*TabPageEx
 }
 
-func (tw *TabWidgetEx) startNewSession(sess session) {
+func (tw *TabWidgetEx) startNewSession(sess Session) {
 	tabPage, err := tw.NewTabPageEx()
 	if err != nil {
 		walk.MsgBox(nil, "ERROR", "新建标签页失败："+err.Error(), walk.MsgBoxIconError)

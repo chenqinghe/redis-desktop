@@ -3,10 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chenqinghe/redis-desktop/i18n"
-	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -14,6 +10,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/chenqinghe/redis-desktop/i18n"
+	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
+	"github.com/sirupsen/logrus"
 )
 
 type MainWindowEX struct {
@@ -32,12 +33,13 @@ type MainWindowEX struct {
 	PB_connect *PushButtonEx
 
 	sessionFile string
-	LB_sessions *ListBoxEX
+	TV_sessions *TreeViewEx
+	//LB_sessions *ListBoxEX
 
-	TW_screenGroup *TabWidgetEx
+	TW_pages *TabWidgetEx
 }
 
-func (mw *MainWindowEX) saveSessions(sessions []session) error {
+func (mw *MainWindowEX) saveSessions(sessions []Session) error {
 	data, err := json.Marshal(sessions)
 	if err != nil {
 		return err
@@ -67,12 +69,12 @@ func (mw *MainWindowEX) LoadSession() error {
 		}
 		return err
 	}
-	sessions := make([]session, 0)
+	sessions := make([]Session, 0)
 	if err := json.Unmarshal(data, &sessions); err != nil {
 		return err
 	}
 
-	mw.LB_sessions.AddSessions(sessions)
+	mw.TV_sessions.AddSessions(sessions)
 	return nil
 }
 
@@ -81,24 +83,24 @@ func (mw *MainWindowEX) importSession(file string) error {
 	if err != nil {
 		return err
 	}
-	sessions := make([]session, 0)
+	sessions := make([]Session, 0)
 	if err := json.Unmarshal(data, &sessions); err != nil {
 		return err
 	}
-	mw.LB_sessions.AddSessions(sessions)
+	mw.TV_sessions.AddSessions(sessions)
 	return nil
 }
 
 func createMainWindow(lang i18n.Lang) *MainWindowEX {
 	mw := &MainWindowEX{
-		lang:           lang,
-		PB_connect:     new(PushButtonEx),
-		LB_sessions:    new(ListBoxEX),
-		TW_screenGroup: new(TabWidgetEx),
+		lang:        lang,
+		PB_connect:  new(PushButtonEx),
+		TV_sessions: &TreeViewEx{model: NewSessionTreeModel()},
+		TW_pages:    new(TabWidgetEx),
 	}
 	mw.PB_connect.root = mw
-	mw.LB_sessions.root = mw
-	mw.TW_screenGroup.root = mw
+	mw.TV_sessions.root = mw
+	mw.TW_pages.root = mw
 	err := MainWindow{
 		Title:    mw.lang.Tr("mainwindow.title"),
 		MinSize:  Size{600, 400},
@@ -140,7 +142,7 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 								return
 							}
 							if accepted {
-								sessions := mw.LB_sessions.GetSessions()
+								sessions := mw.TV_sessions.GetSessions()
 								data, err := json.Marshal(sessions)
 								if err != nil {
 									walk.MsgBox(mw, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
@@ -161,7 +163,7 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 					Action{
 						Text: mw.lang.Tr("mainwindow.menu.edit.clear"),
 						OnTriggered: func() {
-							mw.TW_screenGroup.CurrentPage().content.ClearScreen()
+							mw.TW_pages.CurrentPage().content.ClearScreen()
 						},
 					},
 				},
@@ -185,7 +187,7 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 					Action{
 						Text: mw.lang.Tr("mainwindow.menu.run.batch"),
 						OnTriggered: func() {
-							curTabpage := mw.TW_screenGroup.CurrentPage()
+							curTabpage := mw.TW_pages.CurrentPage()
 							if curTabpage == nil {
 								walk.MsgBox(mw, "INFO", "当前没有打开的会话", walk.MsgBoxIconInformation)
 								return
@@ -238,31 +240,47 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 					Composite{
 						Layout: HBox{MarginsZero: true},
 						Children: []Widget{
-							ListBox{
-								MaxSize:  Size{200, 0},
-								AssignTo: &mw.LB_sessions.ListBox,
-								Model:    mw.LB_sessions.Model,
-								Font: Font{
-									Family:    "Consolas",
-									PointSize: 10,
-								},
-								OnItemActivated: func() {
-									if mw.LB_sessions.CurrentIndex() >= 0 {
-										mw.TW_screenGroup.startNewSession(mw.LB_sessions.CurrentSession())
-									}
-								},
-								OnSelectedIndexesChanged: func() { mw.LB_sessions.EnsureItemVisible(0) },
-								OnCurrentIndexChanged:    func() {},
-								MultiSelection:           false,
+							TreeView{
+								AssignTo:   &mw.TV_sessions.TreeView,
+								MaxSize:    Size{200, 0},
+								ItemHeight: 20,
+								Model:      NewSessionTreeModel(),
 								ContextMenuItems: []MenuItem{
 									Action{
-										Text:        mw.lang.Tr("mainwindow.LBsessions.menu.deletesession"),
-										OnTriggered: mw.LB_sessions.RemoveSelectedSession,
+										Text:        "添加会话",
+										OnTriggered: mw.TV_sessions.RemoveSelectedSession,
+									},
+									Action{
+										Text:        "添加目录",
+										OnTriggered: mw.TV_sessions.AddDirectory,
 									},
 								},
 							},
+							//ListBox{
+							//	MaxSize:  Size{200, 0},
+							//	AssignTo: &mw.LB_sessions.ListBox,
+							//	Model:    mw.LB_sessions.Model,
+							//	Font: Font{
+							//		Family:    "Consolas",
+							//		PointSize: 10,
+							//	},
+							//	OnItemActivated: func() {
+							//		if mw.LB_sessions.CurrentIndex() >= 0 {
+							//			mw.TW_screenGroup.startNewSession(mw.LB_sessions.CurrentSession())
+							//		}
+							//	},
+							//	OnSelectedIndexesChanged: func() { mw.LB_sessions.EnsureItemVisible(0) },
+							//	OnCurrentIndexChanged:    func() {},
+							//	MultiSelection:           false,
+							//	ContextMenuItems: []MenuItem{
+							//		Action{
+							//			Text:        mw.lang.Tr("mainwindow.LBsessions.menu.deletesession"),
+							//			OnTriggered: mw.LB_sessions.RemoveSelectedSession,
+							//		},
+							//	},
+							//},
 							TabWidget{
-								AssignTo: &mw.TW_screenGroup.TabWidget,
+								AssignTo: &mw.TW_pages.TabWidget,
 								Pages: []TabPage{
 									TabPage{
 										Title: "home",
@@ -334,7 +352,7 @@ func batchRun(p *MainWindowEX) {
 							content := cmdContent.Text()
 							dlg.Close(0)
 							cmds := strings.Split(content, "\r\n")
-							curTabpage := p.TW_screenGroup.CurrentPage()
+							curTabpage := p.TW_pages.CurrentPage()
 							if curTabpage == nil {
 								walk.MsgBox(p, "INFO", "当前没有打开的会话", walk.MsgBoxIconInformation)
 								return

@@ -25,10 +25,10 @@ func (pb *PushButtonEx) OnClick() {
 		walk.MsgBox(nil, "ERROR", "端口格式错误:"+err.Error(), walk.MsgBoxIconError)
 		return
 	}
-	s := session{Password: pb.root.LE_password.Text(), Host: pb.root.LE_host.Text(), Port: p}
+	s := Session{Password: pb.root.LE_password.Text(), Host: pb.root.LE_host.Text(), Port: p}
 
 	var exist bool
-	for _, v := range pb.root.LB_sessions.GetSessions() {
+	for _, v := range pb.root.TV_sessions.GetSessions() {
 		if fmt.Sprintf("%s:%d", v.Host, v.Port) == fmt.Sprintf("%s:%d", s.Host, s.Port) {
 			exist = true
 			break
@@ -37,9 +37,9 @@ func (pb *PushButtonEx) OnClick() {
 	if !exist {
 		ret := walk.MsgBox(pb.root, "INFO", "是否保存当前会话？", walk.MsgBoxIconQuestion|walk.MsgBoxYesNo)
 		if ret == win.IDYES { // save session
-			pb.root.LB_sessions.AddSession(s)
+			pb.root.TV_sessions.AddSession(&s)
 		}
 	}
 
-	pb.root.TW_screenGroup.startNewSession(s)
+	pb.root.TW_pages.startNewSession(s)
 }
