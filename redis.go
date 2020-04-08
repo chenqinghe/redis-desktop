@@ -36,6 +36,9 @@ func execCmd(conn redis.Conn, cmd string) string {
 }
 
 func stringfyResponse(resp interface{}) string {
+	if resp == nil {
+		return "<nil>"
+	}
 	switch t := resp.(type) {
 	case string:
 		return t
@@ -54,16 +57,12 @@ func stringfyResponse(resp interface{}) string {
 		}
 		return buf.String()
 	default:
-		if resp == nil {
-			return "<nil>"
-		} else {
-			fmt.Println("resp type:", reflect.TypeOf(resp).String())
-		}
+		logrus.Errorln("unknown resp type:", reflect.TypeOf(resp).String())
 		return "unknown response type"
 	}
 }
 
-func connectToRedis(host string, port int, password string) (redis.Conn, error) {
+func DialRedis(host string, port int, password string) (redis.Conn, error) {
 	options := []redis.DialOption{
 		redis.DialConnectTimeout(time.Second),
 		redis.DialWriteTimeout(time.Second),

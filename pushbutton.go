@@ -35,7 +35,7 @@ func (pb *PushButtonEx) OnClick() {
 		}
 	}
 	if !exist {
-		ret := walk.MsgBox(nil, "INFO", "是否保存当前会话？", walk.MsgBoxIconQuestion|walk.MsgBoxYesNo)
+		ret := walk.MsgBox(pb.root, "INFO", "是否保存当前会话？", walk.MsgBoxIconQuestion|walk.MsgBoxYesNo)
 		if ret == win.IDYES { // save session
 			pb.root.LB_sessions.AddSession(s)
 		}

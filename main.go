@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/chenqinghe/redis-desktop/i18n"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/chenqinghe/redis-desktop/i18n"
 	"github.com/lxn/walk"
+	"github.com/sirupsen/logrus"
 )
 
 func coredump(msg string) {
@@ -42,7 +42,7 @@ func main() {
 
 	mw.SetSessionFile(filepath.Join(rootPath, "RedisDesktop", "data"))
 	if err := mw.LoadSession(); err != nil {
-		walk.MsgBox(nil, "ERROR", "加载会话文件失败："+err.Error(), walk.MsgBoxIconError)
+		walk.MsgBox(mw, "ERROR", "加载会话文件失败："+err.Error(), walk.MsgBoxIconError)
 		return
 	}
 

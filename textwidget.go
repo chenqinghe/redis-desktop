@@ -24,7 +24,7 @@ func (tw *TabWidgetEx) startNewSession(sess session) {
 
 	tabPage.content.SetText("")
 	tabPage.content.AppendText(fmt.Sprintf("connecting to %s:%d ......\r\n", sess.Host, sess.Port))
-	conn, err := connectToRedis(sess.Host, sess.Port, sess.Password)
+	conn, err := DialRedis(sess.Host, sess.Port, sess.Password)
 	if err != nil {
 		tabPage.content.AppendText(err.Error())
 		return
@@ -43,4 +43,12 @@ func (tw *TabWidgetEx) startNewSession(sess session) {
 func (tw *TabWidgetEx) AddPage(page *TabPageEx) {
 	tw.Pages().Add(page.TabPage)
 	tw.pages = append(tw.pages, page)
+}
+
+func (tw *TabWidgetEx) CurrentPage() *TabPageEx {
+	idx := tw.CurrentIndex()
+	if idx > 0 {
+		return tw.pages[idx-1] // TODO: tw.Pages() contains home page, if home page could be remove, idx not -1
+	}
+	return nil
 }

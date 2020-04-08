@@ -17,7 +17,7 @@ type TabPageEx struct {
 
 func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 	// FIXME: 移除默认tab，下面的方式可以移除，但是会造成程序无响应
-	//if tw.Pages().At(0).Title() == "tab1" {
+	//if tw.Pages().At(0).Title() == "home" {
 	//	tw.Pages().RemoveAt(0)
 	//}
 
@@ -28,6 +28,7 @@ func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 
 	if err := (TabPage{
 		AssignTo: &tabpageEx.TabPage,
+		Image:    "img/redis.ico",
 		Layout: HBox{
 			MarginsZero: true,
 			SpacingZero: true,

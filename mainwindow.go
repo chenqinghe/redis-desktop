@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type MainWindowEX struct {
@@ -75,6 +76,19 @@ func (mw *MainWindowEX) LoadSession() error {
 	return nil
 }
 
+func (mw *MainWindowEX) importSession(file string) error {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	sessions := make([]session, 0)
+	if err := json.Unmarshal(data, &sessions); err != nil {
+		return err
+	}
+	mw.LB_sessions.AddSessions(sessions)
+	return nil
+}
+
 func createMainWindow(lang i18n.Lang) *MainWindowEX {
 	mw := &MainWindowEX{
 		lang:           lang,
@@ -90,17 +104,54 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 		MinSize:  Size{600, 400},
 		AssignTo: &mw.MainWindow,
 		Layout:   VBox{MarginsZero: true},
+		//Background: SolidColorBrush{Color: walk.RGB(132, 34, 234)},
 		MenuItems: []MenuItem{
 			Menu{
 				Text: mw.lang.Tr("mainwindow.menu.file"),
 				Items: []MenuItem{
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.file.export"),
-						OnTriggered: nil,
+						Text: mw.lang.Tr("mainwindow.menu.file.import"),
+						OnTriggered: func() {
+							dlg := &walk.FileDialog{
+								Title: "choose a file", // string
+							}
+							accepted, err := dlg.ShowOpen(mw)
+							if err != nil {
+								walk.MsgBox(mw, "ERROR", "Open FileDialog:"+err.Error(), walk.MsgBoxIconError)
+								return
+							}
+							if accepted {
+								if err := mw.importSession(dlg.FilePath); err != nil {
+									walk.MsgBox(mw, "ERROR", "Import Session:"+err.Error(), walk.MsgBoxIconError)
+									return
+								}
+							}
+						},
 					},
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.file.import"),
-						OnTriggered: nil,
+						Text: mw.lang.Tr("mainwindow.menu.file.export"),
+						OnTriggered: func() {
+							dlg := &walk.FileDialog{
+								Title: "save to file",
+							}
+							accepted, err := dlg.ShowSave(mw)
+							if err != nil {
+								walk.MsgBox(mw, "ERROR", "Open FileDialog:"+err.Error(), walk.MsgBoxIconError)
+								return
+							}
+							if accepted {
+								sessions := mw.LB_sessions.GetSessions()
+								data, err := json.Marshal(sessions)
+								if err != nil {
+									walk.MsgBox(mw, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
+									return
+								}
+								if err := ioutil.WriteFile(dlg.FilePath, data, os.ModePerm); err != nil {
+									walk.MsgBox(mw, "ERROR", "Write Session Error:"+err.Error(), walk.MsgBoxIconError)
+									return
+								}
+							}
+						},
 					},
 				},
 			},
@@ -108,8 +159,10 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 				Text: mw.lang.Tr("mainwindow.menu.edit"),
 				Items: []MenuItem{
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.edit.clear"),
-						OnTriggered: nil,
+						Text: mw.lang.Tr("mainwindow.menu.edit.clear"),
+						OnTriggered: func() {
+							mw.TW_screenGroup.CurrentPage().content.ClearScreen()
+						},
 					},
 				},
 			},
@@ -130,8 +183,15 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 				Text: mw.lang.Tr("mainwindow.menu.run"),
 				Items: []MenuItem{
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.run.batch"),
-						OnTriggered: nil,
+						Text: mw.lang.Tr("mainwindow.menu.run.batch"),
+						OnTriggered: func() {
+							curTabpage := mw.TW_screenGroup.CurrentPage()
+							if curTabpage == nil {
+								walk.MsgBox(mw, "INFO", "当前没有打开的会话", walk.MsgBoxIconInformation)
+								return
+							}
+							batchRun(mw)
+						},
 					},
 				},
 			},
@@ -147,13 +207,6 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 					Action{
 						Text:        mw.lang.Tr("mainwindow.menu.help.bug"),
 						OnTriggered: startIssuePage,
-					},
-					Separator{},
-					Action{
-						Text: mw.lang.Tr("mainwindow.menu.help.donate"),
-						OnTriggered: func() {
-							showDonate(mw)
-						},
 					},
 				},
 			},
@@ -189,6 +242,10 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 								MaxSize:  Size{200, 0},
 								AssignTo: &mw.LB_sessions.ListBox,
 								Model:    mw.LB_sessions.Model,
+								Font: Font{
+									Family:    "Consolas",
+									PointSize: 10,
+								},
 								OnItemActivated: func() {
 									if mw.LB_sessions.CurrentIndex() >= 0 {
 										mw.TW_screenGroup.startNewSession(mw.LB_sessions.CurrentSession())
@@ -208,7 +265,8 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 								AssignTo: &mw.TW_screenGroup.TabWidget,
 								Pages: []TabPage{
 									TabPage{
-										Title: "tab1",
+										Title: "home",
+										Image: "img/home.ico",
 										Content: ImageView{
 											Mode:  ImageViewModeStretch,
 											Image: "img/cover.png",
@@ -248,21 +306,58 @@ func startPage(uri string) {
 	}
 }
 
-func showDonate(p walk.Form) {
+func batchRun(p *MainWindowEX) {
+	var dlg *walk.Dialog
+	var cmdContent *walk.TextEdit
+
 	if _, err := (Dialog{
-		Title: "捐赠",
-		Layout: VBox{
-			MarginsZero: true,
-		},
+		Title:    "批量运行命令",
+		AssignTo: &dlg,
+		MinSize:  Size{500, 500},
+		Layout: VBox{Margins: Margins{
+			Left:   10, //int
+			Top:    10, //int
+			Right:  10, //int
+			Bottom: 10, //int
+		}},
 		Children: []Widget{
-			ImageView{
-				Image:   "img/cover.jpg",
-				Mode:    ImageViewModeStretch,
-				MinSize: Size{500, 500},
-				MaxSize: Size{500, 500},
+			Label{Text: "请在下面输入要执行的命令，每行一条..."},
+			TextEdit{
+				AssignTo: &cmdContent,
+			},
+			Composite{
+				Layout: HBox{MarginsZero: true},
+				Children: []Widget{
+					PushButton{
+						Text: "确定",
+						OnClicked: func() {
+							content := cmdContent.Text()
+							dlg.Close(0)
+							cmds := strings.Split(content, "\r\n")
+							curTabpage := p.TW_screenGroup.CurrentPage()
+							if curTabpage == nil {
+								walk.MsgBox(p, "INFO", "当前没有打开的会话", walk.MsgBoxIconInformation)
+								return
+							}
+							for _, v := range cmds {
+								v = strings.TrimSpace(v)
+								if len(v) > 0 {
+									curTabpage.content.AppendText(v)
+									curTabpage.content.runCmd(v)
+								}
+							}
+						},
+					},
+					PushButton{
+						Text: "取消",
+						OnClicked: func() {
+							dlg.Close(0)
+						},
+					},
+				},
 			},
 		},
 	}).Run(p); err != nil {
-		logrus.Errorln("showDonate: run dialog error:", err)
+		logrus.Errorln("show batch run dialog error:", err)
 	}
 }

@@ -19,7 +19,7 @@ var zh_ch = Lang{
 			"mainwindow.menu.setting.theme":            "主题",
 			"mainwindow.menu.logpath":                  "日志路径",
 			"mainwindow.menu.run":                      "运行",
-			"mainwindow.menu.run.batch":                "批量运行命令",
+			"mainwindow.menu.run.batch":                "在当前会话批量运行",
 			"mainwindow.menu.help":                     "帮助",
 			"mainwindow.menu.help.source":              "查看源码",
 			"mainwindow.menu.help.bug":                 "提bug",

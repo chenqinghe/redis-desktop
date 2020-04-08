@@ -11,9 +11,9 @@ import (
 )
 
 type TextEditEx struct {
-	root *MainWindowEX
-
+	root   *MainWindowEX
 	parent *TabPageEx
+
 	*walk.TextEdit
 
 	offset int
@@ -42,12 +42,8 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 			},
 			declarative.Separator{},
 			declarative.Action{
-				Text: "清屏",
-				OnTriggered: func() {
-					textEditEx.TextEdit.SetText("> ")
-					textEditEx.TextEdit.SetTextSelection(2, 2)
-					textEditEx.offset = 0
-				},
+				Text:        "清屏",
+				OnTriggered: textEditEx.ClearScreen,
 			},
 		},
 		OnKeyPress: textEditEx.OnKeyPress,
@@ -59,6 +55,14 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 		logrus.Errorln("create textedit error:", err)
 		return nil, err
 	}
+
+	// TODO: when textedit visible change to true, move cursor to the end
+	//textEditEx.TextEdit.VisibleChanged().Attach(func() {
+	//	fmt.Println("textedit visible changed:", textEditEx.TextEdit.Visible())
+	//	if textEditEx.TextEdit.Visible() {
+	//		textEditEx.TextEdit.SetTextSelection(0, 1)
+	//	}
+	//})
 
 	walk.InitWrapperWindow(textEditEx)
 
@@ -73,6 +77,12 @@ func (te *TextEditEx) OnKeyPress(key walk.Key) {
 		te.runCmd(cmd)
 		return
 	}
+}
+
+func (te *TextEditEx) ClearScreen() {
+	te.TextEdit.SetText("> ")
+	te.TextEdit.SetTextSelection(2, 2)
+	te.offset = 0
 }
 
 func (te *TextEditEx) runCmd(cmd string) {
