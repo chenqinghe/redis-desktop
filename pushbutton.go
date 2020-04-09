@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/lxn/walk"
+	"github.com/chenqinghe/walk"
 	"github.com/lxn/win"
 )
 
@@ -37,7 +37,7 @@ func (pb *PushButtonEx) OnClick() {
 	if !exist {
 		ret := walk.MsgBox(pb.root, "INFO", "是否保存当前会话？", walk.MsgBoxIconQuestion|walk.MsgBoxYesNo)
 		if ret == win.IDYES { // save session
-			pb.root.TV_sessions.AddSession(&s)
+			pb.root.TV_sessions.AddSession()
 		}
 	}
 

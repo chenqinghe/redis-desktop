@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lxn/walk"
-	"github.com/lxn/walk/declarative"
+	"github.com/chenqinghe/walk"
+	"github.com/chenqinghe/walk/declarative"
 	"github.com/lxn/win"
 	"github.com/sirupsen/logrus"
 )

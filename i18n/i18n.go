@@ -43,7 +43,30 @@ func GetLang(name string) (Lang, bool) {
 }
 
 func (l Lang) Tr(format string, args ...interface{}) string {
-	return Tr(l.name, format, args...)
+	value, ok := l.Get(format)
+	if ok {
+		format = value
+	}
+
+	if len(args) > 0 {
+		params := make([]interface{}, 0, len(args))
+		for _, arg := range args {
+			if arg == nil {
+				continue
+			}
+
+			val := reflect.ValueOf(arg)
+			if val.Kind() == reflect.Slice {
+				for i := 0; i < val.Len(); i++ {
+					params = append(params, val.Index(i).Interface())
+				}
+			} else {
+				params = append(params, arg)
+			}
+		}
+		return fmt.Sprintf(format, params...)
+	}
+	return format
 }
 
 type Translation struct {
@@ -75,40 +98,10 @@ func (t *Translation) Get(name string) (string, bool) {
 }
 
 // Tr translates content to target language.
-func Tr(lang, format string, args ...interface{}) string {
-	language, ok := defaultStore.langs[lang]
-	if !ok {
-		language = defaultStore.defaultLang
+func Tr(format string, args ...interface{}) string {
+	defLang := defaultStore.defaultLang
+	if defLang.name == "" {
+		defLang = en_us
 	}
-
-	value, ok := language.Get(format)
-	if ok {
-		format = value
-	} else {
-		// try default language
-		value, ok = defaultStore.defaultLang.Get(format)
-		if ok {
-			format = value
-		}
-	}
-
-	if len(args) > 0 {
-		params := make([]interface{}, 0, len(args))
-		for _, arg := range args {
-			if arg == nil {
-				continue
-			}
-
-			val := reflect.ValueOf(arg)
-			if val.Kind() == reflect.Slice {
-				for i := 0; i < val.Len(); i++ {
-					params = append(params, val.Index(i).Interface())
-				}
-			} else {
-				params = append(params, arg)
-			}
-		}
-		return fmt.Sprintf(format, params...)
-	}
-	return format
+	return defLang.Tr(format, args...)
 }

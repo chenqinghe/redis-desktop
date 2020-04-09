@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/lxn/walk"
+	"github.com/chenqinghe/walk"
 )
 
 type TabWidgetEx struct {

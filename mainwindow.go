@@ -8,12 +8,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/chenqinghe/redis-desktop/i18n"
-	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	"github.com/chenqinghe/walk"
+	. "github.com/chenqinghe/walk/declarative"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,8 +20,6 @@ type MainWindowEX struct {
 	*walk.MainWindow
 
 	logFile string
-
-	lang i18n.Lang
 
 	LE_host     *walk.LineEdit
 	LE_port     *walk.LineEdit
@@ -39,24 +36,6 @@ type MainWindowEX struct {
 	TW_pages *TabWidgetEx
 }
 
-func (mw *MainWindowEX) saveSessions(sessions []Session) error {
-	data, err := json.Marshal(sessions)
-	if err != nil {
-		return err
-	}
-RETRY:
-	if err := ioutil.WriteFile(mw.sessionFile, data, os.ModePerm); err != nil {
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(mw.sessionFile), os.ModePerm); err != nil {
-				return err
-			}
-			goto RETRY
-		}
-		return err
-	}
-	return nil
-}
-
 func (mw *MainWindowEX) SetSessionFile(file string) {
 	mw.sessionFile = file
 }
@@ -69,13 +48,8 @@ func (mw *MainWindowEX) LoadSession() error {
 		}
 		return err
 	}
-	sessions := make([]Session, 0)
-	if err := json.Unmarshal(data, &sessions); err != nil {
-		return err
-	}
 
-	mw.TV_sessions.AddSessions(sessions)
-	return nil
+	return mw.TV_sessions.LoadSession(data)
 }
 
 func (mw *MainWindowEX) importSession(file string) error {
@@ -91,9 +65,8 @@ func (mw *MainWindowEX) importSession(file string) error {
 	return nil
 }
 
-func createMainWindow(lang i18n.Lang) *MainWindowEX {
+func createMainWindow() *MainWindowEX {
 	mw := &MainWindowEX{
-		lang:        lang,
 		PB_connect:  new(PushButtonEx),
 		TV_sessions: &TreeViewEx{model: NewSessionTreeModel()},
 		TW_pages:    new(TabWidgetEx),
@@ -102,17 +75,17 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 	mw.TV_sessions.root = mw
 	mw.TW_pages.root = mw
 	err := MainWindow{
-		Title:    mw.lang.Tr("mainwindow.title"),
+		Title:    i18n.Tr("mainwindow.title"),
 		MinSize:  Size{600, 400},
 		AssignTo: &mw.MainWindow,
 		Layout:   VBox{MarginsZero: true},
 		//Background: SolidColorBrush{Color: walk.RGB(132, 34, 234)},
 		MenuItems: []MenuItem{
 			Menu{
-				Text: mw.lang.Tr("mainwindow.menu.file"),
+				Text: i18n.Tr("mainwindow.menu.file"),
 				Items: []MenuItem{
 					Action{
-						Text: mw.lang.Tr("mainwindow.menu.file.import"),
+						Text: i18n.Tr("mainwindow.menu.file.import"),
 						OnTriggered: func() {
 							dlg := &walk.FileDialog{
 								Title: "choose a file", // string
@@ -131,7 +104,7 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 						},
 					},
 					Action{
-						Text: mw.lang.Tr("mainwindow.menu.file.export"),
+						Text: i18n.Tr("mainwindow.menu.file.export"),
 						OnTriggered: func() {
 							dlg := &walk.FileDialog{
 								Title: "save to file",
@@ -158,10 +131,10 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 				},
 			},
 			Menu{
-				Text: mw.lang.Tr("mainwindow.menu.edit"),
+				Text: i18n.Tr("mainwindow.menu.edit"),
 				Items: []MenuItem{
 					Action{
-						Text: mw.lang.Tr("mainwindow.menu.edit.clear"),
+						Text: i18n.Tr("mainwindow.menu.edit.clear"),
 						OnTriggered: func() {
 							mw.TW_pages.CurrentPage().content.ClearScreen()
 						},
@@ -169,23 +142,23 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 				},
 			},
 			Menu{
-				Text: mw.lang.Tr("mainwindow.menu.setting"),
+				Text: i18n.Tr("mainwindow.menu.setting"),
 				Items: []MenuItem{
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.setting.theme"),
+						Text:        i18n.Tr("mainwindow.menu.setting.theme"),
 						OnTriggered: nil,
 					},
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.logpath"),
+						Text:        i18n.Tr("mainwindow.menu.logpath"),
 						OnTriggered: nil,
 					},
 				},
 			},
 			Menu{
-				Text: mw.lang.Tr("mainwindow.menu.run"),
+				Text: i18n.Tr("mainwindow.menu.run"),
 				Items: []MenuItem{
 					Action{
-						Text: mw.lang.Tr("mainwindow.menu.run.batch"),
+						Text: i18n.Tr("mainwindow.menu.run.batch"),
 						OnTriggered: func() {
 							curTabpage := mw.TW_pages.CurrentPage()
 							if curTabpage == nil {
@@ -198,16 +171,16 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 				},
 			},
 			Menu{
-				Text: mw.lang.Tr("mainwindow.menu.help"),
+				Text: i18n.Tr("mainwindow.menu.help"),
 				Items: []MenuItem{
 					Action{
-						Text: mw.lang.Tr("mainwindow.menu.help.source"),
+						Text: i18n.Tr("mainwindow.menu.help.source"),
 						OnTriggered: func() {
 							startPage("https://github.com/chenqinghe/redis-desktop")
 						},
 					},
 					Action{
-						Text:        mw.lang.Tr("mainwindow.menu.help.bug"),
+						Text:        i18n.Tr("mainwindow.menu.help.bug"),
 						OnTriggered: startIssuePage,
 					},
 				},
@@ -224,14 +197,14 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 						MaxSize: Size{0, 50},
 						Layout:  HBox{},
 						Children: []Widget{
-							Label{Text: mw.lang.Tr("mainwindow.labelhost")},
+							Label{Text: i18n.Tr("mainwindow.labelhost")},
 							LineEdit{AssignTo: &mw.LE_host},
-							Label{Text: mw.lang.Tr("mainwindow.labelport")},
+							Label{Text: i18n.Tr("mainwindow.labelport")},
 							LineEdit{AssignTo: &mw.LE_port},
-							Label{Text: mw.lang.Tr("mainwindow.labelpassword")},
+							Label{Text: i18n.Tr("mainwindow.labelpassword")},
 							LineEdit{AssignTo: &mw.LE_password, PasswordMode: true},
 							PushButton{
-								Text:      mw.lang.Tr("mainwindow.PBconnect"),
+								Text:      i18n.Tr("mainwindow.PBconnect"),
 								AssignTo:  &mw.PB_connect.PushButton,
 								OnClicked: mw.PB_connect.OnClick,
 							},
@@ -248,37 +221,54 @@ func createMainWindow(lang i18n.Lang) *MainWindowEX {
 								ContextMenuItems: []MenuItem{
 									Action{
 										Text:        "添加会话",
-										OnTriggered: mw.TV_sessions.RemoveSelectedSession,
+										OnTriggered: mw.TV_sessions.AddSession,
 									},
 									Action{
 										Text:        "添加目录",
 										OnTriggered: mw.TV_sessions.AddDirectory,
 									},
+									Action{
+										Text:        "删除会话",
+										OnTriggered: mw.TV_sessions.RemoveSelectedSession,
+									},
+									Action{
+										Text:        "删除目录",
+										OnTriggered: mw.TV_sessions.RemoveSelectedDirectory,
+									},
+								},
+								OnMouseDown: func(x, y int, button walk.MouseButton) {
+									switch button {
+									case walk.LeftButton:
+										item := mw.TV_sessions.ItemAt(x, y)
+										mw.TV_sessions.SetCurrentItem(item)
+									case walk.RightButton:
+										actionList := mw.TV_sessions.ContextMenu().Actions()
+										var showedMenu = make([]int, actionList.Len())
+										switch item := mw.TV_sessions.CurrentItem(); item.(type) {
+										case *Directory:
+											showedMenu = []int{1, 1, 0, 1}
+										case *Session:
+											showedMenu = []int{0, 0, 1, 0}
+										default: // nil
+											showedMenu = []int{1, 1, 0, 0}
+										}
+										for i := 0; i < actionList.Len(); i++ {
+											if showedMenu[i] == 1 {
+												actionList.At(i).SetVisible(true)
+											} else {
+												actionList.At(i).SetVisible(false)
+											}
+										}
+									}
+								},
+								OnItemActivated: func() {
+									item := mw.TV_sessions.CurrentItem()
+									switch t := item.(type) {
+									case *Session:
+										mw.TW_pages.startNewSession(*t)
+									}
 								},
 							},
-							//ListBox{
-							//	MaxSize:  Size{200, 0},
-							//	AssignTo: &mw.LB_sessions.ListBox,
-							//	Model:    mw.LB_sessions.Model,
-							//	Font: Font{
-							//		Family:    "Consolas",
-							//		PointSize: 10,
-							//	},
-							//	OnItemActivated: func() {
-							//		if mw.LB_sessions.CurrentIndex() >= 0 {
-							//			mw.TW_screenGroup.startNewSession(mw.LB_sessions.CurrentSession())
-							//		}
-							//	},
-							//	OnSelectedIndexesChanged: func() { mw.LB_sessions.EnsureItemVisible(0) },
-							//	OnCurrentIndexChanged:    func() {},
-							//	MultiSelection:           false,
-							//	ContextMenuItems: []MenuItem{
-							//		Action{
-							//			Text:        mw.lang.Tr("mainwindow.LBsessions.menu.deletesession"),
-							//			OnTriggered: mw.LB_sessions.RemoveSelectedSession,
-							//		},
-							//	},
-							//},
 							TabWidget{
 								AssignTo: &mw.TW_pages.TabWidget,
 								Pages: []TabPage{

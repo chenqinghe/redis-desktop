@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	"github.com/chenqinghe/redis-desktop/i18n"
+	"github.com/chenqinghe/walk"
+	. "github.com/chenqinghe/walk/declarative"
 )
 
 type SimpleDialog struct {
@@ -35,14 +36,14 @@ func (sd *SimpleDialog) Prompt(p walk.Form, msg string) string {
 				Layout: HBox{Margins: Margins{}},
 				Children: []Widget{
 					PushButton{
-						Text: "确认",
+						Text: i18n.Tr("widiget.button.ok"),
 						OnClicked: func() {
 							content = input.Text()
 							dlg.Close(0)
 						},
 					},
 					PushButton{
-						Text: "取消",
+						Text: i18n.Tr("widiget.button.cancel"),
 						OnClicked: func() {
 							dlg.Close(0)
 						},
@@ -58,4 +59,45 @@ func (sd *SimpleDialog) Prompt(p walk.Form, msg string) string {
 	}
 
 	return content
+}
+
+// Custom show a custom dialog, only the confirm button was pushed, accepted become true, otherwise
+// no matter the dialog was closed or cancel button was pushed, accepted returns false.
+func (sd *SimpleDialog) Custom(owner walk.Form, widget Widget) (accepted bool, err error) {
+	var (
+		dlg *walk.Dialog
+	)
+
+	if _, err := (Dialog{
+		AssignTo: &dlg,
+		Layout:   VBox{Margins: Margins{}},
+		Children: []Widget{
+			widget,
+			Composite{
+				Layout: HBox{Margins: Margins{}},
+				Children: []Widget{
+					PushButton{
+						Text: i18n.Tr("widiget.button.ok"),
+						OnClicked: func() {
+							// some stuff here...
+							dlg.Close(0)
+						},
+					},
+					PushButton{
+						Text: i18n.Tr("widiget.button.cancel"),
+						OnClicked: func() {
+							dlg.Close(0)
+						},
+					},
+				},
+			},
+		},
+		Title:     sd.Title,
+		Size:      sd.Size,
+		FixedSize: sd.FixedSize,
+	}).Run(owner); err != nil {
+		return false, err
+	}
+
+	return
 }

@@ -33,10 +33,10 @@ func main() {
 
 	// TODO: how to config languages?
 	lang, ok := i18n.GetLang("zh_cn")
-	if !ok {
-		return
+	if ok {
+		i18n.SetDefaultLang(lang)
 	}
-	mw := createMainWindow(lang)
+	mw := createMainWindow()
 
 	//mw.SetSessionFile(filepath.Join(rootPath, "RedisDesktop", "data"))
 	//if err := mw.LoadSession(); err != nil {

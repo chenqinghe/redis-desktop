@@ -3,10 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lxn/win"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strconv"
 
-	"github.com/lxn/walk"
+	"github.com/chenqinghe/walk"
+	. "github.com/chenqinghe/walk/declarative"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,6 +48,7 @@ func (d *Directory) Image() interface{} {
 }
 
 type Session struct {
+	Key      string
 	Host     string
 	Port     int
 	Password string
@@ -55,6 +60,9 @@ func (s *Session) Image() interface{} {
 }
 
 func (s *Session) Text() string {
+	if s.Key != "" {
+		return s.Key
+	}
 	return fmt.Sprintf("%s:%d", s.Host, s.Port)
 }
 
@@ -139,7 +147,17 @@ func (tv *TreeViewEx) SaveSession(file string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(file, data, os.ModePerm)
+RETRY:
+	if err := ioutil.WriteFile(file, data, os.ModePerm); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(filepath.Dir(file), os.ModePerm); err != nil {
+				return err
+			}
+			goto RETRY
+		}
+		return err
+	}
+	return nil
 }
 
 func buildModel(parent *Directory, facade Facade) walk.TreeItem {
@@ -162,24 +180,136 @@ func buildModel(parent *Directory, facade Facade) walk.TreeItem {
 	return dir
 }
 
-func (tv *TreeViewEx) AddSession(s *Session) {
-	tv.addSession(s)
-	tv.ReloadModel()
-	if err := tv.root.saveSessions(nil); err != nil {
-		logrus.Errorln("save sessions error:", err)
+func (tv *TreeViewEx) AddSession() {
+	var (
+		s Session
+
+		dlg      *walk.Dialog
+		accepted bool
+
+		widgetName     *walk.LineEdit
+		widgetHost     *walk.LineEdit
+		widgetPort     *walk.LineEdit
+		widgetPassword *walk.LineEdit
+	)
+
+	var itemSelected bool
+	if tv.CurrentItem() != nil {
+		itemSelected = true
 	}
-}
-func (tv *TreeViewEx) addSession(s *Session) {
-	//item := tv.CurrentItem()
-	//var dir *Directory
-	//if d, ok := item.(*Directory); ok {
-	//	dir = d
-	//} else {
-	//	dir = d.parent
+	logrus.Debugln("before create session, itemSelected:", itemSelected)
+
+	if _, err := (Dialog{
+		Title:     "新建会话",
+		AssignTo:  &dlg,
+		Size:      Size{400, 550},
+		FixedSize: true,
+		Layout:    VBox{MarginsZero: true},
+		Children: []Widget{
+			Composite{
+				Layout: HBox{Margins: Margins{Top: 20, Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Name:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetName, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Host:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetHost, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Port:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetPort, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20, Bottom: 30}},
+				Children: []Widget{
+					TextLabel{Text: "Password:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetPassword, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+				},
+			},
+			Composite{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						MaxSize: Size{100, 30},
+						Text:    "确定",
+						OnClicked: func() {
+							s.Key = widgetName.Text()
+							s.Host = widgetHost.Text()
+							s.Password = widgetPassword.Text()
+							portStr := widgetPort.Text()
+							p, err := strconv.Atoi(portStr)
+							if err != nil {
+								walk.MsgBox(dlg, "ERROR", "invalid port", walk.MsgBoxIconError)
+								return
+							}
+							s.Port = p
+							accepted = true
+							dlg.Close(0)
+						},
+					},
+					PushButton{
+						MaxSize: Size{100, 30},
+						Text:    "取消",
+						OnClicked: func() {
+							dlg.Close(0)
+						},
+					},
+				},
+			},
+		},
+	}).Run(tv.root); err != nil {
+		logrus.Errorln("run new session dialog error:", err)
+	}
+
+	if !accepted {
+		return
+	}
+
+	logrus.Debugln("after create session, itemSelected:", itemSelected)
+	if !itemSelected {
+		tv.SetCurrentItem(nil)
+	}
+
+	logrus.Debugln("add session")
+	tv.addSession(&s)
+	logrus.Debugln("reload model")
+	tv.ReloadModel()
+	tv.EnsureVisible(&s)
+	//if err := tv.SaveSession(tv.root.sessionFile); err != nil {
+	//	logrus.Errorln("save sessions error:", err)
 	//}
-	//
-	//s.parent = dir
-	//dir.children = append(dir.children, s)
+}
+
+func (tv *TreeViewEx) addSession(s *Session) {
+	item := tv.CurrentItem()
+	if item == nil {
+		tv.model.roots = append(tv.model.roots, s)
+		return
+	}
+
+	switch t := item.(type) {
+	case *Directory:
+		s.parent = t
+		t.Children = append(t.Children, s)
+	case *Session:
+		// TODO: 未选择任何item的情况下新建session，关闭新建session对话框后，会默认选择第一个TreeItem，
+		// 造成item.(*Directory)断言失败，因此这里还是需要判断选中session的情况。
+		if t.parent == nil { // root session
+			tv.model.roots = append(tv.model.roots, s)
+			return
+		}
+		dir := t.parent
+		s.parent = dir
+		dir.Children = append(dir.Children, s)
+	}
 }
 
 func (tv *TreeViewEx) AddSessions(sesses []Session) {
@@ -196,15 +326,64 @@ func (tv *TreeViewEx) GetSessions() []Session {
 }
 
 func (tv *TreeViewEx) RemoveSelectedSession() {
-	//index := tv.CurrentIndex()
-	//if index > 0 {
-	//	tv.sessions[index] = tv.sessions[len(tv.sessions)-1]
-	//	tv.sessions = tv.sessions[:len(tv.sessions)-1]
-	//	tv.Model[index] = tv.Model[len(tv.Model)-1]
-	//	tv.Model = tv.Model[:len(tv.Model)-1]
-	//	tv.ReloadModel()
-	//	tv.root.saveSessions(tv.sessions)
-	//}
+	s := tv.CurrentItem().(*Session)
+	p := s.parent
+	if p == nil { // root session
+		for k, v := range tv.model.roots {
+			if v == s {
+				copy(tv.model.roots[k:], tv.model.roots[k+1:])
+				tv.model.roots = tv.model.roots[:len(tv.model.roots)-1]
+				break
+			}
+		}
+		tv.ReloadModel()
+		return
+	}
+
+	for k, v := range p.Children {
+		if v == s {
+			copy(p.Children[k:], p.Children[k+1:])
+			p.Children = p.Children[:len(p.Children)-1]
+			break
+		}
+	}
+
+	tv.ReloadModel()
+	return
+}
+
+func (tv *TreeViewEx) RemoveSelectedDirectory() {
+	s := tv.CurrentItem().(*Directory)
+	if len(s.Children) > 0 {
+		key := walk.MsgBox(tv.root, "Confirm Remove?", "the directory not empty, are you sure to remove?", walk.MsgBoxIconQuestion|walk.MsgBoxYesNo)
+		if key != win.IDYES {
+			return
+		}
+	}
+
+	p := s.parent
+	if p == nil { // root session
+		for k, v := range tv.model.roots {
+			if v == s {
+				copy(tv.model.roots[k:], tv.model.roots[k+1:])
+				tv.model.roots = tv.model.roots[:len(tv.model.roots)-1]
+				break
+			}
+		}
+		tv.ReloadModel()
+		return
+	}
+
+	for k, v := range p.Children {
+		if v == s {
+			copy(p.Children[k:], p.Children[k+1:])
+			p.Children = p.Children[:len(p.Children)-1]
+			break
+		}
+	}
+
+	tv.ReloadModel()
+	return
 }
 
 func (tv *TreeViewEx) ReloadModel() {

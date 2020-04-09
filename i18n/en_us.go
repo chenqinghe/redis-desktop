@@ -9,6 +9,7 @@ var en_us = Lang{
 	Translation: &Translation{
 		sections: make([]string, 0),
 		words: map[string]string{
+			// for main window
 			"mainwindow.title":                         "Redis Cli Desktop",
 			"mainwindow.menu.file":                     "File",
 			"mainwindow.menu.file.export":              "export",
@@ -29,6 +30,11 @@ var en_us = Lang{
 			"mainwindow.labelport":                     "Port",
 			"mainwindow.labelpassword":                 "Password",
 			"mainwindow.PBconnect":                     "Connect",
+
+			// for widiget
+			"widiget.button.yes": "YES",
+			"widiget.button.no":  "NO",
+			"widiget.button.ok":  "OK",
 		},
 	},
 }

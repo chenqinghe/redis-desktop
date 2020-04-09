@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/lxn/walk"
-	"github.com/lxn/walk/declarative"
+	"github.com/chenqinghe/walk"
+	"github.com/chenqinghe/walk/declarative"
 	"reflect"
 )
 
