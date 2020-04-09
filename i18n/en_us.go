@@ -32,9 +32,10 @@ var en_us = Lang{
 			"mainwindow.PBconnect":                     "Connect",
 
 			// for widiget
-			"widiget.button.yes": "YES",
-			"widiget.button.no":  "NO",
-			"widiget.button.ok":  "OK",
+			"widget.button.yes":    "YES",
+			"widget.button.no":     "NO",
+			"widget.button.ok":     "OK",
+			"widget.button.cancel": "Cancel",
 		},
 	},
 }

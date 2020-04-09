@@ -103,5 +103,9 @@ func Tr(format string, args ...interface{}) string {
 	if defLang.name == "" {
 		defLang = en_us
 	}
-	return defLang.Tr(format, args...)
+	_, ok := defLang.Get(format)
+	if ok {
+		return defLang.Tr(format, args...)
+	}
+	return en_us.Tr(format, args...)
 }

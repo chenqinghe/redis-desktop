@@ -36,14 +36,14 @@ func (sd *SimpleDialog) Prompt(p walk.Form, msg string) string {
 				Layout: HBox{Margins: Margins{}},
 				Children: []Widget{
 					PushButton{
-						Text: i18n.Tr("widiget.button.ok"),
+						Text: i18n.Tr("widget.button.ok"),
 						OnClicked: func() {
 							content = input.Text()
 							dlg.Close(0)
 						},
 					},
 					PushButton{
-						Text: i18n.Tr("widiget.button.cancel"),
+						Text: i18n.Tr("widget.button.cancel"),
 						OnClicked: func() {
 							dlg.Close(0)
 						},
@@ -77,14 +77,14 @@ func (sd *SimpleDialog) Custom(owner walk.Form, widget Widget) (accepted bool, e
 				Layout: HBox{Margins: Margins{}},
 				Children: []Widget{
 					PushButton{
-						Text: i18n.Tr("widiget.button.ok"),
+						Text: i18n.Tr("widget.button.ok"),
 						OnClicked: func() {
 							// some stuff here...
 							dlg.Close(0)
 						},
 					},
 					PushButton{
-						Text: i18n.Tr("widiget.button.cancel"),
+						Text: i18n.Tr("widget.button.cancel"),
 						OnClicked: func() {
 							dlg.Close(0)
 						},
