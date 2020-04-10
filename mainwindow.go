@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -53,16 +52,7 @@ func (mw *MainWindowEX) LoadSession() error {
 }
 
 func (mw *MainWindowEX) importSession(file string) error {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return err
-	}
-	sessions := make([]Session, 0)
-	if err := json.Unmarshal(data, &sessions); err != nil {
-		return err
-	}
-	mw.TV_sessions.AddSessions(sessions)
-	return nil
+	return mw.TV_sessions.ImportSessions(file)
 }
 
 func createMainWindow() *MainWindowEX {
@@ -115,14 +105,8 @@ func createMainWindow() *MainWindowEX {
 								return
 							}
 							if accepted {
-								sessions := mw.TV_sessions.GetSessions()
-								data, err := json.Marshal(sessions)
-								if err != nil {
-									walk.MsgBox(mw, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
-									return
-								}
-								if err := ioutil.WriteFile(dlg.FilePath, data, os.ModePerm); err != nil {
-									walk.MsgBox(mw, "ERROR", "Write Session Error:"+err.Error(), walk.MsgBoxIconError)
+								if err := mw.TV_sessions.ExportSessions(dlg.FilePath); err != nil {
+									walk.MsgBox(mw, "ERROR", "Export Session Error:"+err.Error(), walk.MsgBoxIconError)
 									return
 								}
 							}

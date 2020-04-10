@@ -283,9 +283,9 @@ func (tv *TreeViewEx) AddSession() {
 	logrus.Debugln("reload model")
 	tv.ReloadModel()
 	tv.EnsureVisible(&s)
-	//if err := tv.SaveSession(tv.root.sessionFile); err != nil {
-	//	logrus.Errorln("save sessions error:", err)
-	//}
+	if err := tv.SaveSession(tv.root.sessionFile); err != nil {
+		logrus.Errorln("save sessions error:", err)
+	}
 }
 
 func (tv *TreeViewEx) addSession(s *Session) {
@@ -312,17 +312,17 @@ func (tv *TreeViewEx) addSession(s *Session) {
 	}
 }
 
-func (tv *TreeViewEx) AddSessions(sesses []Session) {
-	//for _, sess := range sesses {
-	//	tv.addSession(sess)
-	//}
-	//tv.ReloadModel()
-	//tv.root.saveSessions(tv.sessions)
+func (tv *TreeViewEx) ImportSessions(file string) error {
+	return nil
 }
 
-func (tv *TreeViewEx) GetSessions() []Session {
-	return nil
-	//return tv.sessions
+func (tv *TreeViewEx) ExportSessions(file string) error {
+	data, err := json.Marshal(tv.model.roots)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(file, data, os.ModePerm)
 }
 
 func (tv *TreeViewEx) RemoveSelectedSession() {
@@ -349,6 +349,7 @@ func (tv *TreeViewEx) RemoveSelectedSession() {
 	}
 
 	tv.ReloadModel()
+	tv.SaveSession(tv.root.sessionFile)
 	return
 }
 
@@ -383,6 +384,7 @@ func (tv *TreeViewEx) RemoveSelectedDirectory() {
 	}
 
 	tv.ReloadModel()
+	tv.SaveSession(tv.root.sessionFile)
 	return
 }
 
@@ -430,4 +432,5 @@ func (tv *TreeViewEx) AddDirectory() {
 
 	tv.ReloadModel()
 	tv.EnsureVisible(item)
+	tv.SaveSession(tv.root.sessionFile)
 }
