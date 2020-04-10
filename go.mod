@@ -6,6 +6,5 @@ require (
 	github.com/chenqinghe/walk v0.0.0-20200409150400-540325c03f05
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4
-	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0
 )

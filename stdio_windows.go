@@ -3,11 +3,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -22,12 +21,12 @@ func SetStdHandle(stdout, stderr *os.File) error {
 
 	kernel, err := syscall.LoadLibrary("Kernel32.dll")
 	if err != nil {
-		return errors.Wrap(err, "load dll error")
+		return fmt.Errorf("LoadLibrary: %s", err)
 	}
 
 	setStdHandle, err := syscall.GetProcAddress(syscall.Handle(kernel), "SetStdHandle")
 	if err != nil {
-		return errors.Wrap(err, "GetProcAddress error")
+		return fmt.Errorf("GetProcAddress: SetStdHandle: %s", err)
 	}
 
 	t1 := syscall.STD_ERROR_HANDLE
@@ -41,7 +40,7 @@ func SetStdHandle(stdout, stderr *os.File) error {
 	)
 
 	if ret == 0 || errno != 0 {
-		return errors.Wrap(errno, "syscall error")
+		return fmt.Errorf("Syscall: Returned value not 0: %d", ret)
 	}
 	*os.Stderr = *stderr
 
@@ -56,7 +55,7 @@ func SetStdHandle(stdout, stderr *os.File) error {
 	)
 
 	if ret == 0 || errno != 0 {
-		return errors.Wrap(errno, "syscall error")
+		return fmt.Errorf("Syscall: Returned value not 0: %d", ret)
 	}
 
 	*os.Stdout = *stdout
