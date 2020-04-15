@@ -24,11 +24,12 @@ type MainWindowEX struct {
 	LE_port     *walk.LineEdit
 	LE_password *walk.LineEdit
 
+	homepage *walk.CustomWidget
+
 	PB_connect *PushButtonEx
 
 	sessionFile string
 	TV_sessions *TreeViewEx
-	//LB_sessions *ListBoxEX
 
 	TW_pages *TabWidgetEx
 }
@@ -51,6 +52,28 @@ func (mw *MainWindowEX) LoadSession() error {
 
 func (mw *MainWindowEX) importSession(file string) error {
 	return mw.TV_sessions.ImportSessions(file)
+}
+
+func (mw *MainWindowEX) drawHomePage(canvas *walk.Canvas, updateBounds walk.Rectangle) error {
+	bounds := mw.ClientBounds()
+
+	brush,_:= walk.NewSolidColorBrush(walk.RGB(255,255,255))
+	canvas.FillRectanglePixels(brush,bounds)
+
+	font, err := walk.NewFont("微软雅黑", 60, 0)
+	if err != nil {
+		return err
+	}
+	bounds.Y+=300
+	canvas.DrawTextPixels("Redis-Desktop", font, walk.RGB(0, 0, 0), bounds, walk.TextCenter|walk.TextWordbreak)
+
+	font,err=walk.NewFont("微软雅黑",30,0)
+	if err!=nil {
+		return err
+	}
+	bounds.Y+= 200
+	canvas.DrawTextPixels("开源免费的Redis桌面版命令行工具",font,walk.RGB(0,0,0),bounds,walk.TextCenter)
+return nil
 }
 
 func createMainWindow() *MainWindowEX {
@@ -255,12 +278,13 @@ func createMainWindow() *MainWindowEX {
 								AssignTo: &mw.TW_pages.TabWidget,
 								Pages: []TabPage{
 									TabPage{
-										Title: "home",
-										Image: "img/home.ico",
-										Layout: VBox{MarginsZero: true,SpacingZero: true},
-										Content: ImageView{
-											Mode:  ImageViewModeStretch,
-											Image: "img/cover.png",
+										Title:  "home",
+										Image:  "img/home.ico",
+										Layout: VBox{MarginsZero: true, SpacingZero: true},
+										Content: CustomWidget{
+											AssignTo:            &mw.homepage,
+											InvalidatesOnResize: true,
+											Paint:               mw.drawHomePage,
 										},
 									},
 								},
