@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/chenqinghe/walk"
@@ -137,6 +138,7 @@ func (tv *TreeViewEx) LoadSession(data []byte) error {
 	for _, v := range facades {
 		tv.model.roots = append(tv.model.roots, buildModel(nil, v))
 	}
+	sortTreeItem(tv.model.roots)
 
 	return tv.SetModel(tv.model)
 }
@@ -176,8 +178,21 @@ func buildModel(parent *Directory, facade Facade) walk.TreeItem {
 	for _, v := range facade.Children {
 		dir.Children = append(dir.Children, buildModel(dir, *v))
 	}
+	sortTreeItem(dir.Children)
 
 	return dir
+}
+
+// sortTreeItem sort the TreeItems, show Directory first.
+func sortTreeItem(items []walk.TreeItem) {
+	sort.SliceStable(items, func(i, j int) bool {
+		_, iIsDir := items[i].(*Directory)
+		_, jIsDir := items[j].(*Directory)
+		if iIsDir && !jIsDir {
+			return true
+		}
+		return false
+	})
 }
 
 func (tv *TreeViewEx) AddSession() {
@@ -278,13 +293,12 @@ func (tv *TreeViewEx) AddSession() {
 		tv.SetCurrentItem(nil)
 	}
 
-	logrus.Debugln("add session")
 	tv.addSession(&s)
-	logrus.Debugln("reload model")
 	tv.ReloadModel()
 	tv.EnsureVisible(&s)
 	if err := tv.SaveSession(tv.root.sessionFile); err != nil {
 		logrus.Errorln("save sessions error:", err)
+		walk.MsgBox(tv.root, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
 	}
 }
 
@@ -292,6 +306,7 @@ func (tv *TreeViewEx) addSession(s *Session) {
 	item := tv.CurrentItem()
 	if item == nil {
 		tv.model.roots = append(tv.model.roots, s)
+		sortTreeItem(tv.model.roots)
 		return
 	}
 
@@ -299,16 +314,19 @@ func (tv *TreeViewEx) addSession(s *Session) {
 	case *Directory:
 		s.parent = t
 		t.Children = append(t.Children, s)
+		sortTreeItem(t.Children)
 	case *Session:
 		// TODO: 未选择任何item的情况下新建session，关闭新建session对话框后，会默认选择第一个TreeItem，
 		// 造成item.(*Directory)断言失败，因此这里还是需要判断选中session的情况。
 		if t.parent == nil { // root session
 			tv.model.roots = append(tv.model.roots, s)
+			sortTreeItem(tv.model.roots)
 			return
 		}
 		dir := t.parent
 		s.parent = dir
 		dir.Children = append(dir.Children, s)
+		sortTreeItem(dir.Children)
 	}
 }
 
@@ -362,6 +380,13 @@ func (tv *TreeViewEx) RemoveSelectedDirectory() {
 		}
 	}
 
+	defer func() {
+		tv.ReloadModel()
+		if err := tv.SaveSession(tv.root.sessionFile); err != nil {
+			logrus.Errorln("Save Session Error:" + err.Error())
+		}
+	}()
+
 	p := s.parent
 	if p == nil { // root session
 		for k, v := range tv.model.roots {
@@ -371,7 +396,6 @@ func (tv *TreeViewEx) RemoveSelectedDirectory() {
 				break
 			}
 		}
-		tv.ReloadModel()
 		return
 	}
 
@@ -383,8 +407,6 @@ func (tv *TreeViewEx) RemoveSelectedDirectory() {
 		}
 	}
 
-	tv.ReloadModel()
-	tv.SaveSession(tv.root.sessionFile)
 	return
 }
 

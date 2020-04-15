@@ -24,8 +24,6 @@ type MainWindowEX struct {
 	LE_port     *walk.LineEdit
 	LE_password *walk.LineEdit
 
-	LE_command *walk.LineEdit
-
 	PB_connect *PushButtonEx
 
 	sessionFile string
@@ -120,7 +118,11 @@ func createMainWindow() *MainWindowEX {
 					Action{
 						Text: i18n.Tr("mainwindow.menu.edit.clear"),
 						OnTriggered: func() {
-							mw.TW_pages.CurrentPage().content.ClearScreen()
+							page := mw.TW_pages.CurrentPage()
+							if page == nil {
+								return
+							}
+							page.content.ClearScreen()
 						},
 					},
 				},
@@ -171,10 +173,6 @@ func createMainWindow() *MainWindowEX {
 			},
 		},
 		Children: []Widget{
-			LineEdit{
-				AssignTo: &mw.LE_command,
-				Visible:  false,
-			},
 			VSplitter{
 				Children: []Widget{
 					Composite{
@@ -259,6 +257,7 @@ func createMainWindow() *MainWindowEX {
 									TabPage{
 										Title: "home",
 										Image: "img/home.ico",
+										Layout: VBox{MarginsZero: true,SpacingZero: true},
 										Content: ImageView{
 											Mode:  ImageViewModeStretch,
 											Image: "img/cover.png",

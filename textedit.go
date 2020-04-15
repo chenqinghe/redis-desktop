@@ -11,12 +11,13 @@ import (
 )
 
 type TextEditEx struct {
+	*walk.TextEdit
+
 	root   *MainWindowEX
 	parent *TabPageEx
 
-	*walk.TextEdit
-
-	offset int
+	offset      int // input rune count, NOT byte
+	historyCmds []string
 }
 
 func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
@@ -72,8 +73,8 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 func (te *TextEditEx) OnKeyPress(key walk.Key) {
 	te.SetTextSelection(te.TextLength(), te.TextLength())
 	if key == walk.KeyReturn {
-		content := te.Text()
-		cmd := content[len(content)-te.offset:]
+		content := []rune(te.Text())
+		cmd := string(content[len(content)-te.offset:])
 		te.runCmd(cmd)
 		return
 	}
@@ -117,20 +118,18 @@ func (te *TextEditEx) RunSelectCmd() {
 	te.clearCmdBuffer()
 	te.AppendText(cmd)
 	te.moveCursorToEnd()
-	te.offset = len(cmd)
+	te.offset = end - start
 	te.runCmd(cmd)
 }
 
 func (te *TextEditEx) moveCursorToEnd() {
-	te.SetTextSelection(te.TextLength(), te.TextLength())
+	length := te.TextLength()
+	te.SetTextSelection(length, length)
 }
 
 func (te *TextEditEx) clearCmdBuffer() {
 	text := te.Text()
-	start, end := len(text)-te.offset, len(text)
-	bufferedCmd := text[start:end]
-	runeLen := len([]rune(bufferedCmd))
-	start, end = len([]rune(text))-runeLen, len([]rune(text))
+	start, end := len([]rune(text))-te.offset, len([]rune(text))
 	logrus.Debugln("clearCmdBuffer: start:", start, "end:", end, "to be cleared:", text[start:end])
 	te.SetTextSelection(start, end)
 	te.ReplaceSelectedText("", false)
@@ -142,12 +141,10 @@ func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr)
 	if msg == win.WM_CHAR {
 		logrus.Debugln("WndProc: WM_CHAR:", wParam, lParam)
 		if walk.Key(wParam) == walk.KeyBack {
-			fmt.Println("backspace pressed!")
 			if te.offset <= 0 {
 				return 0
 			}
 			te.offset--
-			fmt.Println("offset:", te.offset)
 		} else {
 			te.offset++
 		}

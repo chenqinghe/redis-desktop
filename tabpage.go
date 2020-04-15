@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/gomodule/redigo/redis"
 	"github.com/chenqinghe/walk"
 	. "github.com/chenqinghe/walk/declarative"
+	"github.com/gomodule/redigo/redis"
 	"github.com/sirupsen/logrus"
 )
 
@@ -16,11 +16,6 @@ type TabPageEx struct {
 }
 
 func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
-	// FIXME: 移除默认tab，下面的方式可以移除，但是会造成程序无响应
-	//if tw.Pages().At(0).Title() == "home" {
-	//	tw.Pages().RemoveAt(0)
-	//}
-
 	tabpageEx := &TabPageEx{
 		content: nil,
 		conn:    nil,
@@ -33,15 +28,7 @@ func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 			MarginsZero: true,
 			SpacingZero: true,
 		},
-		ContextMenuItems: []MenuItem{
-			Action{
-				Text: "关闭会话",
-				OnTriggered: func() {
-					// TODO: remove the page
-				},
-			},
-		},
-	}).Create(NewBuilder(nil)); err != nil {
+	}).Create(NewBuilder(tw.root)); err != nil {
 		logrus.Errorln("create tabpage error:", err)
 		return nil, err
 	}
@@ -53,6 +40,7 @@ func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 	tabpageEx.SetContent(textedit)
 
 	tw.AddPage(tabpageEx)
+
 	return tabpageEx, nil
 }
 
