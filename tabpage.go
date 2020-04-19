@@ -28,6 +28,11 @@ func (tw *TabWidgetEx) NewTabPageEx() (*TabPageEx, error) {
 			MarginsZero: true,
 			SpacingZero: true,
 		},
+		OnClosed: func() {
+			if tw.Pages().Len() == 0 {
+				tw.root.MainWindow.Close()
+			}
+		},
 	}).Create(NewBuilder(tw.root)); err != nil {
 		logrus.Errorln("create tabpage error:", err)
 		return nil, err

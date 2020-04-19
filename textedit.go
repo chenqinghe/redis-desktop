@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/chenqinghe/redis-desktop/i18n"
 	"github.com/chenqinghe/walk"
 	"github.com/chenqinghe/walk/declarative"
 	"github.com/lxn/win"
@@ -32,18 +34,18 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 		AssignTo: &textEditEx.TextEdit,
 		ContextMenuItems: []declarative.MenuItem{
 			declarative.Action{
-				Text:        "执行选中命令",
+				Text:        i18n.Tr("widget.textedit.menu.execselected"),
 				OnTriggered: textEditEx.RunSelectCmd,
 			},
 			declarative.Action{
-				Text: "复制",
+				Text: i18n.Tr("widget.textedit.menu.copy"),
 				OnTriggered: func() {
 
 				},
 			},
 			declarative.Separator{},
 			declarative.Action{
-				Text:        "清屏",
+				Text:        i18n.Tr("widget.textedit.menu.clear"),
 				OnTriggered: textEditEx.ClearScreen,
 			},
 		},
@@ -57,15 +59,19 @@ func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
 		return nil, err
 	}
 
-	// TODO: when textedit visible change to true, move cursor to the end
-	//textEditEx.TextEdit.VisibleChanged().Attach(func() {
-	//	fmt.Println("textedit visible changed:", textEditEx.TextEdit.Visible())
-	//	if textEditEx.TextEdit.Visible() {
-	//		textEditEx.TextEdit.SetTextSelection(0, 1)
-	//	}
-	//})
+	textEditEx.FocusedChanged().Attach(func() {
+		time.AfterFunc(time.Millisecond*5, func() {
+			textEditEx.AsWindowBase().Synchronize(func() {
+				if textEditEx.Visible() {
+					textEditEx.SetTextSelection(textEditEx.TextLength(), textEditEx.TextLength())
+				}
+			})
+		})
+	})
 
-	walk.InitWrapperWindow(textEditEx)
+	if err := walk.InitWrapperWindow(textEditEx); err != nil {
+		return nil, err
+	}
 
 	return textEditEx, nil
 }
@@ -108,7 +114,7 @@ func (te *TextEditEx) RunSelectCmd() {
 	start, end := te.TextSelection()
 	logrus.Debugln("RunSelectCmd: start:", start, "end:", end)
 	if end-start <= 0 {
-		walk.MsgBox(nil, "INFO", "选中的命令为空！", walk.MsgBoxIconInformation)
+		walk.MsgBox(nil, "INFO", i18n.Tr("alert.selectedcmdempty"), walk.MsgBoxIconInformation)
 		fmt.Println("nothing to run")
 		return
 	}

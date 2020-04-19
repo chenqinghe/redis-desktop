@@ -18,8 +18,6 @@ import (
 type MainWindowEX struct {
 	*walk.MainWindow
 
-	logFile string
-
 	LE_host     *walk.LineEdit
 	LE_port     *walk.LineEdit
 	LE_password *walk.LineEdit
@@ -57,23 +55,26 @@ func (mw *MainWindowEX) importSession(file string) error {
 func (mw *MainWindowEX) drawHomePage(canvas *walk.Canvas, updateBounds walk.Rectangle) error {
 	bounds := mw.ClientBounds()
 
-	brush,_:= walk.NewSolidColorBrush(walk.RGB(255,255,255))
-	canvas.FillRectanglePixels(brush,bounds)
+	brush, _ := walk.NewSolidColorBrush(walk.RGB(255, 255, 255))
+	canvas.FillRectanglePixels(brush, bounds)
 
 	font, err := walk.NewFont("微软雅黑", 60, 0)
 	if err != nil {
 		return err
 	}
-	bounds.Y+=300
+	bounds.Y += 300
 	canvas.DrawTextPixels("Redis-Desktop", font, walk.RGB(0, 0, 0), bounds, walk.TextCenter|walk.TextWordbreak)
 
-	font,err=walk.NewFont("微软雅黑",30,0)
-	if err!=nil {
+	font, err = walk.NewFont("微软雅黑", 30, 0)
+	if err != nil {
 		return err
 	}
-	bounds.Y+= 200
-	canvas.DrawTextPixels("开源免费的Redis桌面版命令行工具",font,walk.RGB(0,0,0),bounds,walk.TextCenter)
-return nil
+	bounds.Y += 200
+	canvas.DrawTextPixels("开源免费的Redis桌面版命令行工具", font, walk.RGB(0, 0, 0), bounds, walk.TextCenter)
+
+	//mw.homepage.RequestLayout()
+
+	return nil
 }
 
 func createMainWindow() *MainWindowEX {
@@ -171,7 +172,7 @@ func createMainWindow() *MainWindowEX {
 						OnTriggered: func() {
 							curTabpage := mw.TW_pages.CurrentPage()
 							if curTabpage == nil {
-								walk.MsgBox(mw, "INFO", "当前没有打开的会话", walk.MsgBoxIconInformation)
+								walk.MsgBox(mw, "INFO", i18n.Tr("alert.noopenedsession"), walk.MsgBoxIconInformation)
 								return
 							}
 							batchRun(mw)
@@ -225,19 +226,42 @@ func createMainWindow() *MainWindowEX {
 								Model:      NewSessionTreeModel(),
 								ContextMenuItems: []MenuItem{
 									Action{
-										Text:        "添加会话",
+										Text: i18n.Tr("widget.treeview.menu.opensession"),
+										OnTriggered: func() {
+											item := mw.TV_sessions.CurrentItem()
+											switch t := item.(type) {
+											case *Session:
+												mw.TW_pages.startNewSession(*t)
+											}
+										},
+									},
+									Separator{},
+									Action{
+										Text:        i18n.Tr("widget.treeview.menu.addsession"),
 										OnTriggered: mw.TV_sessions.AddSession,
 									},
 									Action{
-										Text:        "添加目录",
+										Text:        i18n.Tr("widget.treeview.menu.adddirectory"),
 										OnTriggered: mw.TV_sessions.AddDirectory,
 									},
 									Action{
-										Text:        "删除会话",
+										Text: i18n.Tr("widget.treeview.menu.editsession"),
+										OnTriggered: func() {
+
+										},
+									},
+									Action{
+										Text: i18n.Tr("widget.treeview.menu.editdirectory"),
+										OnTriggered: func() {
+
+										},
+									},
+									Action{
+										Text:        i18n.Tr("widget.treeview.menu.deletesession"),
 										OnTriggered: mw.TV_sessions.RemoveSelectedSession,
 									},
 									Action{
-										Text:        "删除目录",
+										Text:        i18n.Tr("widget.treeview.menu.deletedirectory"),
 										OnTriggered: mw.TV_sessions.RemoveSelectedDirectory,
 									},
 								},
@@ -251,11 +275,11 @@ func createMainWindow() *MainWindowEX {
 										var showedMenu = make([]int, actionList.Len())
 										switch item := mw.TV_sessions.CurrentItem(); item.(type) {
 										case *Directory:
-											showedMenu = []int{1, 1, 0, 1}
+											showedMenu = []int{0, 1, 1, 1, 0, 1, 0, 1}
 										case *Session:
-											showedMenu = []int{0, 0, 1, 0}
+											showedMenu = []int{1, 1, 0, 0, 1, 0, 1, 0}
 										default: // nil
-											showedMenu = []int{1, 1, 0, 0}
+											showedMenu = []int{0, 0, 1, 1, 0, 0, 0, 0}
 										}
 										for i := 0; i < actionList.Len(); i++ {
 											if showedMenu[i] == 1 {
@@ -275,20 +299,32 @@ func createMainWindow() *MainWindowEX {
 								},
 							},
 							TabWidget{
-								AssignTo: &mw.TW_pages.TabWidget,
+								AssignTo:           &mw.TW_pages.TabWidget,
+								ContentMarginsZero: true,
 								Pages: []TabPage{
 									TabPage{
 										Title:  "home",
 										Image:  "img/home.ico",
 										Layout: VBox{MarginsZero: true, SpacingZero: true},
-										Content: CustomWidget{
-											AssignTo:            &mw.homepage,
-											InvalidatesOnResize: true,
-											Paint:               mw.drawHomePage,
+										//Content: CustomWidget{
+										//	AssignTo: &mw.homepage,
+										//	//InvalidatesOnResize: true,
+										//	Paint: mw.drawHomePage,
+										//	//DoubleBuffering: true,
+										//	//ClearsBackground: true,
+										//	//PaintMode: PaintBuffered,
+										//},
+										Content: ImageView{
+											Mode:  ImageViewModeStretch,
+											Image: "img/cover.png",
+										},
+										OnClosed: func() {
+											if mw.TW_pages.Pages().Len() == 0 {
+												mw.Close()
+											}
 										},
 									},
 								},
-								ContentMarginsZero: true,
 							},
 						},
 					},
