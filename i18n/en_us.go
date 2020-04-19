@@ -36,6 +36,25 @@ var en_us = Lang{
 			"widget.button.no":     "NO",
 			"widget.button.ok":     "OK",
 			"widget.button.cancel": "Cancel",
+
+			// textedit
+			"widget.textedit.menu.execselected": "Run Selected Command",
+			"widget.textedit.menu.copy":         "Copy",
+			"widget.textedit.menu.clear":        "Clear",
+
+			// treeview
+			"widget.treeview.menu.opensession":     "Open",
+			"widget.treeview.menu.addsession":      "New Session",
+			"widget.treeview.menu.adddirectory":    "New Directory",
+			"widget.treeview.menu.editsession":     "Edit Session",
+			"widget.treeview.menu.editdirectory":   "Edit Directory",
+			"widget.treeview.menu.deletesession":   "Remove Session",
+			"widget.treeview.menu.deletedirectory": "Remove Directory",
+
+			// alert msg
+			"alert.loadsessionfailed": "Load Session Failed: %s",
+			"alert.selectedcmdempty":  "No Selected Command",
+			"alert.noopenedsession":   "No Opened Session",
 		},
 	},
 }
