@@ -18,8 +18,10 @@ type TextEditEx struct {
 	root   *MainWindowEX
 	parent *TabPageEx
 
-	offset      int // input rune count, NOT byte
+	offset int // input rune count, NOT byte
+
 	historyCmds []string
+	cmdCursor   int
 }
 
 func NewTextEdit(root *MainWindowEX, p *TabPageEx) (*TextEditEx, error) {
@@ -94,6 +96,16 @@ func (te *TextEditEx) ClearScreen() {
 
 func (te *TextEditEx) runCmd(cmd string) {
 	cmd = strings.TrimSpace(cmd)
+
+	cmds := make([]string, 0, len(te.historyCmds))
+	for _, v := range te.historyCmds {
+		if v != cmd {
+			cmds = append(cmds, v)
+		}
+	}
+	te.historyCmds = cmds
+	te.historyCmds = append(te.historyCmds, cmd)
+
 	resp := execCmd(te.parent.conn, cmd)
 	te.AppendText("\r\n")
 	te.AppendText(resp)
@@ -146,13 +158,46 @@ func (te *TextEditEx) clearCmdBuffer() {
 func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) uintptr {
 	if msg == win.WM_CHAR {
 		logrus.Debugln("WndProc: WM_CHAR:", wParam, lParam)
-		if walk.Key(wParam) == walk.KeyBack {
+
+		switch key := walk.Key(wParam); key {
+		case walk.KeyBack:
 			if te.offset <= 0 {
 				return 0
 			}
 			te.offset--
-		} else {
+		case walk.KeyUp, walk.KeyDown:
+			if key == walk.KeyUp {
+				te.cmdCursor++
+			} else if key == walk.KeyDown {
+				if te.cmdCursor > 0 {
+					te.cmdCursor--
+				}
+			}
+			cmd := te.historyCmds[len(te.historyCmds)-te.cmdCursor]
+			te.SetTextSelection(te.TextLength()-te.offset, te.TextLength())
+			te.ReplaceSelectedText(cmd, false)
+			return 0
+		default:
+			te.cmdCursor = 0
 			te.offset++
+		}
+	} else if msg == win.WM_KEYDOWN {
+		switch key := walk.Key(wParam); key {
+		case walk.KeyUp, walk.KeyDown:
+			if key == walk.KeyUp {
+				if te.cmdCursor < len(te.historyCmds) {
+					te.cmdCursor++
+				}
+			} else if key == walk.KeyDown {
+				if te.cmdCursor > 1 {
+					te.cmdCursor--
+				}
+			}
+			cmd := te.historyCmds[len(te.historyCmds)-te.cmdCursor]
+			te.SetTextSelection(te.TextLength()-te.offset, te.TextLength())
+			te.ReplaceSelectedText(cmd, false)
+			te.offset = len([]rune(cmd))
+			return 0
 		}
 	}
 	return te.TextEdit.WndProc(hwnd, msg, wParam, lParam)

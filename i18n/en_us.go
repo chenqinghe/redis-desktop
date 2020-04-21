@@ -55,6 +55,8 @@ var en_us = Lang{
 			"alert.loadsessionfailed": "Load Session Failed: %s",
 			"alert.selectedcmdempty":  "No Selected Command",
 			"alert.noopenedsession":   "No Opened Session",
+			"alert.hostcannotempty":"Host cannot be empty",
+			"alert.invalidport":"Invalid Port: %s",
 		},
 	},
 }

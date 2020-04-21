@@ -3,16 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chenqinghe/walk"
+	. "github.com/chenqinghe/walk/declarative"
 	"github.com/lxn/win"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
-
-	"github.com/chenqinghe/walk"
-	. "github.com/chenqinghe/walk/declarative"
-	"github.com/sirupsen/logrus"
 )
 
 type Directory struct {
@@ -195,7 +194,7 @@ func sortTreeItem(items []walk.TreeItem) {
 	})
 }
 
-func (tv *TreeViewEx) AddSession() {
+func (tv *TreeViewEx) AddSession(sess ...Session) {
 	var (
 		s Session
 
@@ -207,6 +206,10 @@ func (tv *TreeViewEx) AddSession() {
 		widgetPort     *walk.LineEdit
 		widgetPassword *walk.LineEdit
 	)
+
+	if len(sess) > 0 {
+		s = sess[0]
+	}
 
 	var itemSelected bool
 	if tv.CurrentItem() != nil {
@@ -225,28 +228,28 @@ func (tv *TreeViewEx) AddSession() {
 				Layout: HBox{Margins: Margins{Top: 20, Left: 20, Right: 20}},
 				Children: []Widget{
 					TextLabel{Text: "Name:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
-					LineEdit{AssignTo: &widgetName, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+					LineEdit{AssignTo: &widgetName, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Key},
 				},
 			},
 			Composite{
 				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
 				Children: []Widget{
 					TextLabel{Text: "Host:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
-					LineEdit{AssignTo: &widgetHost, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+					LineEdit{AssignTo: &widgetHost, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Host},
 				},
 			},
 			Composite{
 				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
 				Children: []Widget{
 					TextLabel{Text: "Port:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
-					LineEdit{AssignTo: &widgetPort, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+					LineEdit{AssignTo: &widgetPort, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: strconv.Itoa(s.Port)},
 				},
 			},
 			Composite{
 				Layout: HBox{Margins: Margins{Left: 20, Right: 20, Bottom: 30}},
 				Children: []Widget{
 					TextLabel{Text: "Password:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
-					LineEdit{AssignTo: &widgetPassword, MinSize: Size{150, 0}, MaxSize: Size{150, 0}},
+					LineEdit{AssignTo: &widgetPassword, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Password},
 				},
 			},
 			Composite{
@@ -300,6 +303,10 @@ func (tv *TreeViewEx) AddSession() {
 		logrus.Errorln("save sessions error:", err)
 		walk.MsgBox(tv.root, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
 	}
+}
+
+func (tv *TreeViewEx) NewSession() {
+	tv.AddSession()
 }
 
 func (tv *TreeViewEx) addSession(s *Session) {
@@ -455,4 +462,31 @@ func (tv *TreeViewEx) AddDirectory() {
 	tv.ReloadModel()
 	tv.EnsureVisible(item)
 	tv.SaveSession(tv.root.sessionFile)
+}
+
+func sessionExist(item walk.TreeItem, s Session) bool {
+	switch t := item.(type) {
+	case *Session:
+		if t.Host == s.Host && t.Port == s.Port {
+			return true
+		}
+		return false
+	case *Directory:
+		for _, v := range t.Children {
+			if sessionExist(v, s) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func (tv *TreeViewEx) SessionExist(s Session) bool {
+	for _, v := range tv.model.roots {
+		if sessionExist(v, s) {
+			return true
+		}
+	}
+	return false
 }

@@ -238,7 +238,7 @@ func createMainWindow() *MainWindowEX {
 									Separator{},
 									Action{
 										Text:        i18n.Tr("widget.treeview.menu.addsession"),
-										OnTriggered: mw.TV_sessions.AddSession,
+										OnTriggered: mw.TV_sessions.NewSession,
 									},
 									Action{
 										Text:        i18n.Tr("widget.treeview.menu.adddirectory"),
