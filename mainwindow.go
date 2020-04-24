@@ -245,16 +245,12 @@ func createMainWindow() *MainWindowEX {
 										OnTriggered: mw.TV_sessions.AddDirectory,
 									},
 									Action{
-										Text: i18n.Tr("widget.treeview.menu.editsession"),
-										OnTriggered: func() {
-
-										},
+										Text:        i18n.Tr("widget.treeview.menu.editsession"),
+										OnTriggered: mw.TV_sessions.EditSelectedSession,
 									},
 									Action{
-										Text: i18n.Tr("widget.treeview.menu.editdirectory"),
-										OnTriggered: func() {
-
-										},
+										Text:        i18n.Tr("widget.treeview.menu.editdirectory"),
+										OnTriggered: mw.TV_sessions.EditSelectedDirectory,
 									},
 									Action{
 										Text:        i18n.Tr("widget.treeview.menu.deletesession"),

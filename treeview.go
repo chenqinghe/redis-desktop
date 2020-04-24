@@ -119,6 +119,7 @@ type Facade struct {
 	Children []*Facade
 
 	// Session
+	Key      string
 	Host     string
 	Port     int
 	Password string
@@ -164,6 +165,7 @@ RETRY:
 func buildModel(parent *Directory, facade Facade) walk.TreeItem {
 	if !facade.IsDirectory() {
 		return &Session{
+			Key:      facade.Key,
 			Host:     facade.Host,
 			Port:     facade.Port,
 			Password: facade.Password,
@@ -489,4 +491,115 @@ func (tv *TreeViewEx) SessionExist(s Session) bool {
 		}
 	}
 	return false
+}
+
+func (tv *TreeViewEx) EditSelectedSession() {
+	var (
+		s *Session
+
+		dlg      *walk.Dialog
+		accepted bool
+
+		widgetName     *walk.LineEdit
+		widgetHost     *walk.LineEdit
+		widgetPort     *walk.LineEdit
+		widgetPassword *walk.LineEdit
+	)
+
+	s = tv.CurrentItem().(*Session)
+
+	if _, err := (Dialog{
+		Title:     "编辑会话",
+		AssignTo:  &dlg,
+		Size:      Size{400, 550},
+		FixedSize: true,
+		Layout:    VBox{MarginsZero: true},
+		Children: []Widget{
+			Composite{
+				Layout: HBox{Margins: Margins{Top: 20, Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Name:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetName, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Key},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Host:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetHost, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Host},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20}},
+				Children: []Widget{
+					TextLabel{Text: "Port:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetPort, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: strconv.Itoa(s.Port)},
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 20, Right: 20, Bottom: 30}},
+				Children: []Widget{
+					TextLabel{Text: "Password:", MaxSize: Size{50, 0}, MinSize: Size{50, 0}, TextAlignment: AlignHNearVCenter},
+					LineEdit{AssignTo: &widgetPassword, MinSize: Size{150, 0}, MaxSize: Size{150, 0}, Text: s.Password},
+				},
+			},
+			Composite{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						MaxSize: Size{100, 30},
+						Text:    "确定",
+						OnClicked: func() {
+							s.Key = widgetName.Text()
+							s.Host = widgetHost.Text()
+							s.Password = widgetPassword.Text()
+							portStr := widgetPort.Text()
+							p, err := strconv.Atoi(portStr)
+							if err != nil {
+								walk.MsgBox(dlg, "ERROR", "invalid port", walk.MsgBoxIconError)
+								return
+							}
+							s.Port = p
+							accepted = true
+							dlg.Close(0)
+						},
+					},
+					PushButton{
+						MaxSize: Size{100, 30},
+						Text:    "取消",
+						OnClicked: func() {
+							dlg.Close(0)
+						},
+					},
+				},
+			},
+		},
+	}).Run(tv.root); err != nil {
+		logrus.Errorln("run new session dialog error:", err)
+	}
+
+	if !accepted {
+		return
+	}
+
+	tv.ReloadModel()
+	if err := tv.SaveSession(tv.root.sessionFile); err != nil {
+		logrus.Errorln("save sessions error:", err)
+		walk.MsgBox(tv.root, "ERROR", "Save Session Error:"+err.Error(), walk.MsgBoxIconError)
+	}
+}
+
+func (tv *TreeViewEx) EditSelectedDirectory() {
+	directory := tv.CurrentItem().(*Directory)
+
+RETRY:
+	name := (&SimpleDialog{}).Prompt(tv.root, "请输入目录名称")
+	if name == "" {
+		walk.MsgBox(tv.root, "WARN", "目录名称不能为空", walk.MsgBoxIconWarning|walk.MsgBoxOK)
+		goto RETRY
+	}
+	directory.Name = name
+
+	tv.ReloadModel()
+	tv.SaveSession(tv.root.sessionFile)
 }

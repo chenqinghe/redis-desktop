@@ -67,7 +67,7 @@ func DialRedis(host string, port int, password string) (redis.Conn, error) {
 		redis.DialConnectTimeout(time.Second),
 		redis.DialWriteTimeout(time.Second),
 		redis.DialReadTimeout(time.Second),
-		redis.DialKeepAlive(time.Second * 30),
+		redis.DialKeepAlive(time.Minute * 30),
 	}
 	if password != "" {
 		options = append(options, redis.DialPassword(password))
