@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"time"
@@ -106,12 +107,27 @@ func (te *TextEditEx) runCmd(cmd string) {
 	te.historyCmds = cmds
 	te.historyCmds = append(te.historyCmds, cmd)
 
-	resp := execCmd(te.parent.conn, cmd)
-	te.AppendText("\r\n")
-	te.AppendText(resp)
-	te.AppendText("\r\n\r\n> ")
-	te.SetTextSelection(te.TextLength(), te.TextLength())
-	te.offset = 0
+	command, args := parseCommand(cmd)
+	logrus.Debugln("command:", command, "args:", args)
+	switch command {
+	case "HELP":
+		helpCmd := args[0].(string)
+		manual := CommandManuals[strings.ToUpper(helpCmd)]
+		fmt.Println(manual)
+		manual = strings.ReplaceAll(manual, "\n", "\r\n")
+		te.AppendText("\r\n")
+		te.AppendText(manual)
+		te.AppendText("\r\n\r\n> ")
+		te.SetTextSelection(te.TextLength(), te.TextLength())
+		te.offset = 0
+	default:
+		resp := execCmd(te.parent.conn, command, args...)
+		te.AppendText("\r\n")
+		te.AppendText(resp)
+		te.AppendText("\r\n\r\n> ")
+		te.SetTextSelection(te.TextLength(), te.TextLength())
+		te.offset = 0
+	}
 }
 
 func (te *TextEditEx) OnKeyUp(key walk.Key) {
@@ -148,7 +164,7 @@ func (te *TextEditEx) moveCursorToEnd() {
 func (te *TextEditEx) clearCmdBuffer() {
 	text := te.Text()
 	start, end := len([]rune(text))-te.offset, len([]rune(text))
-	logrus.Debugln("clearCmdBuffer: start:", start, "end:", end, "to be cleared:", text[start:end])
+	logrus.Debugln("clearCmdBuffer: start:", start, "end:", end, "to be cleared:", string([]rune(text)[start:end]))
 	te.SetTextSelection(start, end)
 	te.ReplaceSelectedText("", false)
 
@@ -156,8 +172,9 @@ func (te *TextEditEx) clearCmdBuffer() {
 }
 
 func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) uintptr {
-	if msg == win.WM_CHAR {
-		logrus.Debugln("WndProc: WM_CHAR:", wParam, lParam)
+	switch msg {
+	case win.WM_CHAR:
+		//logrus.Debugln("WndProc: WM_CHAR:", wParam, lParam)
 
 		switch key := walk.Key(wParam); key {
 		case walk.KeyBack:
@@ -165,23 +182,66 @@ func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr)
 				return 0
 			}
 			te.offset--
-		case walk.KeyUp, walk.KeyDown:
-			if key == walk.KeyUp {
-				te.cmdCursor++
-			} else if key == walk.KeyDown {
-				if te.cmdCursor > 0 {
-					te.cmdCursor--
+		case walk.KeyTab:
+			// TODO: autocomplete....
+			content := []rune(te.Text())
+			cmd := string(content[len(content)-te.offset:])
+			logrus.Debugln("offset:", te.offset, "cmd:", cmd, "content:", string(content))
+			ss := strings.Split(cmd, " ")
+			fs := flag.NewFlagSet("", flag.ContinueOnError)
+			fs.Parse(ss)
+
+			ss = fs.Args()
+			if len(ss) != 1 {
+				return 0
+			}
+			prefix := ss[0]
+
+			displayedCmds := make([]string, 0)
+			for _, v := range Commands {
+				if strings.HasPrefix(v, strings.ToUpper(prefix)) {
+					displayedCmds = append(displayedCmds, v)
 				}
 			}
-			cmd := te.historyCmds[len(te.historyCmds)-te.cmdCursor]
-			te.SetTextSelection(te.TextLength()-te.offset, te.TextLength())
-			te.ReplaceSelectedText(cmd, false)
-			return 0
+			logrus.Debugln("prefix:", prefix, "displayedCmds:", displayedCmds)
+			if len(displayedCmds) == 0 {
+				return 0
+			}
+
+			if len(displayedCmds) > 1 {
+				te.AppendText("\r\n")
+				te.AppendText(strings.Join(displayedCmds, "\t"))
+				te.AppendText("\r\n")
+				te.AppendText("> ")
+				te.AppendText(cmd)
+				te.SetTextSelection(te.TextLength(), te.TextLength())
+				return 0
+			}
+
+			if len(displayedCmds) == 1 {
+				logrus.Debugln("cmds[0]:", displayedCmds[0])
+				te.SetTextSelection(te.TextLength()-te.offset, te.TextLength())
+				te.clearCmdBuffer()
+				logrus.Debugln("after cleared buffer:", te.Text())
+				//te.ReplaceSelectedText(displayedCmds[0], false)
+				te.AppendText(displayedCmds[0])
+				te.SetTextSelection(te.TextLength(), te.TextLength())
+				te.offset = len([]rune(displayedCmds[0]))
+				return 0
+			}
+
+		case walk.KeyReturn:
+			// do nothing
+
 		default:
+			logrus.Debugln("input char:", key)
 			te.cmdCursor = 0
 			te.offset++
 		}
-	} else if msg == win.WM_KEYDOWN {
+
+	case win.WM_KEYDOWN:
+		//logrus.Debugln("WndProc: WM_KEYDOWN:", wParam, lParam)
+
 		switch key := walk.Key(wParam); key {
 		case walk.KeyUp, walk.KeyDown:
 			if key == walk.KeyUp {
@@ -199,6 +259,11 @@ func (te *TextEditEx) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr)
 			te.offset = len([]rune(cmd))
 			return 0
 		}
+
+	case win.WM_GETDLGCODE:
+		ret := te.TextEdit.WndProc(hwnd, msg, wParam, lParam)
+		return ret | win.DLGC_WANTTAB
 	}
+
 	return te.TextEdit.WndProc(hwnd, msg, wParam, lParam)
 }

@@ -9,8 +9,10 @@ a very powerful redis manage tool **for windows**.
 # Features
 * [x] manage sessions conveniently 
 * [x] multi tabpages 
-* [x] i18n
+* [x] i18n (English and Simplified Chinese for now)
 * [x] batch execute commands
+* [x] view history commands
+* [x] show commands doc (just type "help" + command, eg: "help SET")
 * [ ] other charming features.....
 
 # Install

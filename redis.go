@@ -3,32 +3,17 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/sirupsen/logrus"
 )
 
-func execCmd(conn redis.Conn, cmd string) string {
-	ss := strings.Split(strings.TrimSpace(cmd), " ")
-	tmp := make([]string, 0, len(ss))
-	for _, v := range ss {
-		if t := strings.TrimSpace(v); len(t) > 0 {
-			tmp = append(tmp, t)
-		}
-	}
-	if len(tmp) == 0 {
-		return ""
-	}
-	args := make([]interface{}, 0, len(tmp))
-	for _, v := range tmp[1:] {
-		args = append(args, v)
-	}
-	logrus.Debugln("exec cmd:", tmp[0], "args:", args)
-	resp, err := conn.Do(tmp[0], args...)
+func execCmd(conn redis.Conn, cmd string, args ...interface{}) string {
+	logrus.Debugln("exec cmd:", cmd, "args:", args)
+	resp, err := conn.Do(cmd, args...)
 	if err != nil {
 		return err.Error()
 	}

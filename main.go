@@ -55,6 +55,7 @@ func main() {
 		lv = logrus.InfoLevel
 	}
 	logrus.SetLevel(lv)
+	//logrus.SetReportCaller(true)
 
 	lang, ok := i18n.GetLang(config.Get().Lang)
 	if ok {
