@@ -12,6 +12,7 @@ a very powerful redis manage tool **for windows**.
 * [x] i18n (English and Simplified Chinese for now)
 * [x] batch execute commands
 * [x] view history commands
+* [x] command auto completion
 * [x] show commands doc (just type "help" + command, eg: "help SET")
 * [ ] other charming features.....
 
